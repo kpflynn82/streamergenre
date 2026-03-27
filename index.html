@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xbox Streamer-Genre Intelligence Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+    <style>
+        :root {
+            --xbox-green: #107C10;
+            --xbox-green-light: #0e8c0e;
+            --xbox-dark: #1a1a2e;
+            --xbox-darker: #0f0f1e;
+            --surface: #16213e;
+            --surface-light: #1a2744;
+            --text: #e8e8e8;
+            --text-muted: #8892b0;
+            --accent: #64ffda;
+            --accent-secondary: #7b68ee;
+            --border: #233554;
+            --danger: #ff6b6b;
+            --warning: #ffd93d;
+            --twitch: #9146FF;
+            --youtube: #FF0000;
+            --kick: #53FC18;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--xbox-darker);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .dashboard {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            background: var(--surface);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .header-left h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .header-left h1 span { color: var(--xbox-green); }
+        .header-left p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .sample-badge {
+            display: inline-block;
+            background: var(--warning);
+            color: #000;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .filter-group label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        select, input[type="text"], input[type="number"] {
+            background: var(--xbox-darker);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            min-width: 160px;
+        }
+        select:focus, input:focus { outline: none; border-color: var(--xbox-green); }
+        input[type="text"] { min-width: 220px; }
+        input[type="number"] { min-width: 100px; }
+
+        /* KPI Cards */
+        .kpis {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .kpi-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px 20px;
+        }
+        .kpi-card .label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .kpi-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #fff;
+            margin-top: 4px;
+        }
+        .kpi-card .sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Charts Section */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .chart-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .chart-card h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-muted);
+        }
+        .chart-card canvas { max-height: 300px; }
+
+        /* Streamer Table */
+        .table-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .table-header h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        .result-count {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .table-wrap {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th {
+            text-align: left;
+            padding: 10px 14px;
+            background: var(--xbox-darker);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            white-space: nowrap;
+            user-select: none;
+            position: sticky;
+            top: 0;
+        }
+        th:hover { color: var(--accent); }
+        th .sort-arrow { margin-left: 4px; opacity: 0.4; }
+        th.active .sort-arrow { opacity: 1; color: var(--xbox-green); }
+        td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        tr:hover td { background: rgba(100,255,218,0.03); }
+        .platform-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .platform-twitch { background: rgba(145,70,255,0.2); color: var(--twitch); }
+        .platform-youtube { background: rgba(255,0,0,0.15); color: var(--youtube); }
+        .platform-kick { background: rgba(83,252,24,0.15); color: var(--kick); }
+        .genre-tags {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        .genre-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            background: rgba(107,203,119,0.12);
+            color: var(--xbox-green);
+            border: 1px solid rgba(107,203,119,0.2);
+        }
+        .genre-tag.secondary {
+            background: rgba(123,104,238,0.12);
+            color: var(--accent-secondary);
+            border-color: rgba(123,104,238,0.2);
+        }
+        .streamer-name {
+            font-weight: 600;
+            color: #fff;
+        }
+        .language-badge {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .viewer-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .viewer-bar-fill {
+            height: 6px;
+            border-radius: 3px;
+            background: var(--xbox-green);
+            min-width: 4px;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .pagination button {
+            background: var(--xbox-darker);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .pagination button:hover { border-color: var(--xbox-green); }
+        .pagination button:disabled { opacity: 0.3; cursor: default; }
+        .pagination .page-info { font-size: 13px; color: var(--text-muted); }
+
+        /* Unified Filter Bar */
+        .filter-bar {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px 24px;
+            margin-bottom: 20px;
+        }
+        .filter-bar-row {
+            display: flex;
+            gap: 12px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+        .reset-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .reset-btn:hover { border-color: var(--danger); color: var(--danger); }
+        .genre-hint {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--accent);
+            min-height: 18px;
+        }
+        .match-primary {
+            color: var(--xbox-green);
+            font-weight: 600;
+            font-size: 11px;
+        }
+        .match-secondary {
+            color: var(--accent-secondary);
+            font-weight: 500;
+            font-size: 11px;
+        }
+        .variety-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .variety-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .variety-num {
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .charts-row { grid-template-columns: 1fr; }
+            header { flex-direction: column; align-items: flex-start; }
+        }
+        @media (max-width: 600px) {
+            .kpis { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+
+    <header>
+        <div class="header-left">
+            <h1><span>Xbox</span> Streamer-Genre Intelligence<span class="sample-badge">4437 STREAMERS</span></h1>
+            <p>Find the right creators for your next game launch — filter by genre, platform, audience size, and language</p>
+        </div>
+    </header>
+
+    <!-- Unified Smart Filter Bar -->
+    <div class="filter-bar">
+        <div class="filter-bar-row">
+            <div class="filter-group">
+                <label>Search Streamer</label>
+                <input type="text" id="searchInput" placeholder="Search by name..." oninput="applyFilters()">
+            </div>
+            <div class="filter-group">
+                <label>Game Genre</label>
+                <select id="genreFilter" onchange="applyFilters()">
+                    <option value="">All Genres</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Platform</label>
+                <select id="platformFilter" onchange="applyFilters()">
+                    <option value="">All Platforms</option>
+                    <option value="Twitch">Twitch</option>
+                    <option value="YouTube">YouTube</option>
+                    <option value="Kick">Kick</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Min Avg Viewers</label>
+                <input type="number" id="minViewers" placeholder="500" value="500" onchange="applyFilters()">
+            </div>
+            <div class="filter-group">
+                <label>Max Avg Viewers</label>
+                <input type="number" id="maxViewers" placeholder="No max" onchange="applyFilters()">
+            </div>
+            <div class="filter-group">
+                <label>Language</label>
+                <select id="languageFilter" onchange="applyFilters()">
+                    <option value="">All Languages</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Variety Score</label>
+                <select id="varietyFilter" onchange="applyFilters()">
+                    <option value="">Any</option>
+                    <option value="explorer">Explorer (8-10)</option>
+                    <option value="rotator">Rotator (5-7)</option>
+                    <option value="specialist">Specialist (3-4)</option>
+                    <option value="onetrick">One-Trick (1-2)</option>
+                    <option value="open">Open to New (5+)</option>
+                </select>
+            </div>
+            <button class="reset-btn" onclick="resetFilters()">Reset</button>
+        </div>
+        <div class="genre-hint" id="genreHint"></div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpis">
+        <div class="kpi-card">
+            <div class="label">Total Streamers</div>
+            <div class="value" id="kpiTotal">-</div>
+            <div class="sub" id="kpiTotalSub">matching filters</div>
+        </div>
+        <div class="kpi-card">
+            <div class="label">Genres Covered</div>
+            <div class="value" id="kpiGenres">-</div>
+            <div class="sub">of 59 VGMS genres</div>
+        </div>
+        <div class="kpi-card">
+            <div class="label">Total Reach</div>
+            <div class="value" id="kpiReach">-</div>
+            <div class="sub">combined avg viewers</div>
+        </div>
+        <div class="kpi-card">
+            <div class="label">Avg Viewers / Streamer</div>
+            <div class="value" id="kpiAvg">-</div>
+            <div class="sub">filtered average</div>
+        </div>
+    </div>
+
+    <!-- Streamer Table -->
+    <div class="table-section">
+        <div class="table-header">
+            <h3>Streamer Database</h3>
+            <div class="result-count" id="resultCount"></div>
+        </div>
+        <div class="table-wrap">
+            <table id="streamerTable">
+                <thead>
+                    <tr>
+                        <th data-col="name" onclick="sortTable('name')">Streamer <span class="sort-arrow">▲</span></th>
+                        <th data-col="platform" onclick="sortTable('platform')">Platform <span class="sort-arrow">▲</span></th>
+                        <th data-col="avgViewers" onclick="sortTable('avgViewers')">Avg Viewers <span class="sort-arrow">▲</span></th>
+                        <th data-col="followers" onclick="sortTable('followers')">Followers <span class="sort-arrow">▲</span></th>
+                        <th id="matchCol" style="display:none">Match</th>
+                        <th data-col="primaryGenre" onclick="sortTable('primaryGenre')">Primary Genre <span class="sort-arrow">▲</span></th>
+                        <th>Secondary Genres</th>
+                        <th data-col="topGame" onclick="sortTable('topGame')">Top Game <span class="sort-arrow">▲</span></th>
+                        <th data-col="varietyScore" onclick="sortTable('varietyScore')">Variety <span class="sort-arrow">▲</span></th>
+                        <th data-col="language" onclick="sortTable('language')">Language <span class="sort-arrow">▲</span></th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+        <div class="pagination">
+            <button id="prevBtn" onclick="changePage(-1)">← Previous</button>
+            <span class="page-info" id="pageInfo"></span>
+            <button id="nextBtn" onclick="changePage(1)">Next →</button>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>Streamers by Genre (Top 15)</h3>
+            <canvas id="genreChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Platform Distribution</h3>
+            <canvas id="platformChart"></canvas>
+        </div>
+    </div>
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>Genre by Total Audience Reach</h3>
+            <canvas id="reachChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Language Distribution</h3>
+            <canvas id="languageChart"></canvas>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Xbox Streamer-Genre Intelligence Dashboard — Prototype with sample data based on public streaming analytics</p>
+        <p style="margin-top:4px;">Data sources: TwitchTracker, Streams Charts, SullyGnome | Genre taxonomy: VGMS (59 genres)</p>
+        <p style="margin-top:4px;">In production, this would connect to Streams Charts API or similar for live data refresh</p>
+    </div>
+</div>
+
+<script src="data.js"></script>
+    <script>
+// ========================================
+// GAME → VGMS GENRE MAPPING TABLE
+// ========================================
+
+
+// ========================================
+// STREAMER DATABASE (sample data based on public analytics)
+// ========================================
+
+
+// ========================================
+// VARIETY SCORE SYSTEM
+// ========================================
+// Known variety scores from public streaming behavior (manual overrides)
+
+
+
+// Compute variety score: use override if available, else estimate from secondary genres
+function getVarietyScore(s) {
+    if (VARIETY_OVERRIDES[s.name] !== undefined) return VARIETY_OVERRIDES[s.name];
+    // Fallback: estimate from secondary genres count
+    const sg = s.secondaryGenres.length;
+    if (sg >= 3) return 7;
+    if (sg === 2) return 5;
+    if (sg === 1) return 3;
+    return 2;
+}
+
+// Variety score label
+function varietyLabel(score) {
+    if (score >= 8) return "Explorer";
+    if (score >= 5) return "Rotator";
+    if (score >= 3) return "Specialist";
+    return "One-Trick";
+}
+
+// Variety score color
+function varietyColor(score) {
+    if (score >= 8) return "#64ffda";
+    if (score >= 5) return "#107C10";
+    if (score >= 3) return "#ffd93d";
+    return "#ff6b6b";
+}
+
+// Add variety scores to all streamers
+STREAMERS.forEach(s => { s.varietyScore = getVarietyScore(s); });
+
+// ========================================
+// STATE
+// ========================================
+let filteredData = [...STREAMERS];
+let sortCol = "avgViewers";
+let sortDir = "desc";
+let currentPage = 1;
+const pageSize = 50;
+
+// ========================================
+// INITIALIZATION
+// ========================================
+function init() {
+    // Populate genre filter
+    const genres = [...new Set(STREAMERS.map(s => s.primaryGenre))].sort();
+    const genreSelect = document.getElementById("genreFilter");
+    genres.forEach(g => {
+        genreSelect.innerHTML += `<option value="${g}">${g}</option>`;
+    });
+
+    // Populate language filter
+    const languages = [...new Set(STREAMERS.map(s => s.language))].sort();
+    const langSelect = document.getElementById("languageFilter");
+    languages.forEach(l => {
+        langSelect.innerHTML += `<option value="${l}">${l}</option>`;
+    });
+
+    applyFilters();
+}
+
+function resetFilters() {
+    document.getElementById("searchInput").value = "";
+    document.getElementById("genreFilter").value = "";
+    document.getElementById("platformFilter").value = "";
+    document.getElementById("minViewers").value = "500";
+            document.getElementById("maxViewers").value = "";
+    document.getElementById("languageFilter").value = "";
+    document.getElementById("varietyFilter").value = "";
+    applyFilters();
+}
+
+// ========================================
+// FILTERING
+// ========================================
+function applyFilters() {
+    const search = document.getElementById("searchInput").value.toLowerCase();
+    const genre = document.getElementById("genreFilter").value;
+    const platform = document.getElementById("platformFilter").value;
+    const minViewers = parseInt(document.getElementById("minViewers").value) || 0;
+            const maxViewers = parseInt(document.getElementById("maxViewers").value) || Infinity;
+    const language = document.getElementById("languageFilter").value;
+    const variety = document.getElementById("varietyFilter").value;
+
+    filteredData = STREAMERS.filter(s => {
+        if (search && !s.name.toLowerCase().includes(search)) return false;
+        if (genre && s.primaryGenre !== genre && !s.secondaryGenres.includes(genre)) return false;
+        if (platform && s.platform !== platform) return false;
+        if (s.avgViewers < minViewers) return false;
+                if (maxViewers !== Infinity && s.avgViewers > maxViewers) return false;
+        if (language && s.language !== language) return false;
+        if (variety === "explorer" && s.varietyScore < 8) return false;
+        if (variety === "rotator" && (s.varietyScore < 5 || s.varietyScore > 7)) return false;
+        if (variety === "specialist" && (s.varietyScore < 3 || s.varietyScore > 4)) return false;
+        if (variety === "onetrick" && s.varietyScore > 2) return false;
+        if (variety === "open" && s.varietyScore < 5) return false;
+        return true;
+    });
+
+    // When genre is selected, sort by match quality (primary first), then by viewers
+    if (genre) {
+        filteredData.sort((a, b) => {
+            const aIsPrimary = a.primaryGenre === genre ? 1 : 0;
+            const bIsPrimary = b.primaryGenre === genre ? 1 : 0;
+            if (aIsPrimary !== bIsPrimary) return bIsPrimary - aIsPrimary;
+            return b.avgViewers - a.avgViewers;
+        });
+    } else {
+        sortData();
+    }
+
+    // Update genre hint
+    const hintEl = document.getElementById("genreHint");
+    if (genre) {
+        const primaryCount = filteredData.filter(s => s.primaryGenre === genre).length;
+        const secondaryCount = filteredData.length - primaryCount;
+        hintEl.innerHTML = `Showing <strong>${filteredData.length}</strong> streamers for <strong>${genre}</strong> — ${primaryCount} primary match${primaryCount !== 1 ? 'es' : ''}, ${secondaryCount} secondary match${secondaryCount !== 1 ? 'es' : ''}. Primary matches are ranked first.`;
+    } else {
+        hintEl.innerHTML = '';
+    }
+
+    // Show/hide match column
+    document.getElementById("matchCol").style.display = genre ? "" : "none";
+
+    currentPage = 1;
+    updateKPIs();
+    updateCharts();
+    updateTable();
+}
+
+// ========================================
+// SORTING
+// ========================================
+function sortData() {
+    filteredData.sort((a, b) => {
+        let va = a[sortCol], vb = b[sortCol];
+        if (typeof va === "string") { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+        if (va < vb) return sortDir === "asc" ? -1 : 1;
+        if (va > vb) return sortDir === "asc" ? 1 : -1;
+        return 0;
+    });
+}
+
+function sortTable(col) {
+    if (sortCol === col) {
+        sortDir = sortDir === "asc" ? "desc" : "asc";
+    } else {
+        sortCol = col;
+        sortDir = col === "avgViewers" || col === "followers" ? "desc" : "asc";
+    }
+    document.querySelectorAll("th").forEach(th => {
+        th.classList.remove("active");
+        const arrow = th.querySelector(".sort-arrow");
+        if (arrow) arrow.textContent = "▲";
+    });
+    const activeTh = document.querySelector(`th[data-col="${col}"]`);
+    if (activeTh) {
+        activeTh.classList.add("active");
+        activeTh.querySelector(".sort-arrow").textContent = sortDir === "asc" ? "▲" : "▼";
+    }
+    sortData();
+    updateTable();
+}
+
+// ========================================
+// KPIs
+// ========================================
+function updateKPIs() {
+    document.getElementById("kpiTotal").textContent = filteredData.length.toLocaleString();
+    const genres = new Set();
+    filteredData.forEach(s => { genres.add(s.primaryGenre); s.secondaryGenres.forEach(g => genres.add(g)); });
+    document.getElementById("kpiGenres").textContent = genres.size;
+    const totalReach = filteredData.reduce((sum, s) => sum + s.avgViewers, 0);
+    document.getElementById("kpiReach").textContent = totalReach >= 1000000 ? (totalReach / 1000000).toFixed(1) + "M" : totalReach >= 1000 ? (totalReach / 1000).toFixed(0) + "K" : totalReach;
+    const avg = filteredData.length ? Math.round(totalReach / filteredData.length) : 0;
+    document.getElementById("kpiAvg").textContent = avg >= 1000 ? (avg / 1000).toFixed(1) + "K" : avg;
+}
+
+// ========================================
+// CHARTS
+// ========================================
+let genreChart, platformChart, reachChart, languageChart;
+
+function updateCharts() {
+    // Genre Distribution
+    const genreCounts = {};
+    filteredData.forEach(s => {
+        genreCounts[s.primaryGenre] = (genreCounts[s.primaryGenre] || 0) + 1;
+    });
+    const sortedGenres = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]).slice(0, 15);
+
+    if (genreChart) genreChart.destroy();
+    genreChart = new Chart(document.getElementById("genreChart"), {
+        type: "bar",
+        data: {
+            labels: sortedGenres.map(g => g[0]),
+            datasets: [{
+                data: sortedGenres.map(g => g[1]),
+                backgroundColor: "rgba(16,124,16,0.7)",
+                borderColor: "rgba(16,124,16,1)",
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            indexAxis: "y",
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: "#8892b0" }, grid: { color: "rgba(35,53,84,0.5)" } },
+                y: { ticks: { color: "#e8e8e8", font: { size: 11 } }, grid: { display: false } }
+            }
+        }
+    });
+
+    // Platform Distribution
+    const platformCounts = { Twitch: 0, YouTube: 0, Kick: 0 };
+    filteredData.forEach(s => { platformCounts[s.platform] = (platformCounts[s.platform] || 0) + 1; });
+    if (platformChart) platformChart.destroy();
+    platformChart = new Chart(document.getElementById("platformChart"), {
+        type: "doughnut",
+        data: {
+            labels: Object.keys(platformCounts).filter(k => platformCounts[k] > 0),
+            datasets: [{
+                data: Object.values(platformCounts).filter(v => v > 0),
+                backgroundColor: ["#9146FF", "#FF0000", "#53FC18"],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: "bottom", labels: { color: "#e8e8e8", padding: 16, font: { size: 12 } } }
+            }
+        }
+    });
+
+    // Reach by Genre
+    const genreReach = {};
+    filteredData.forEach(s => {
+        genreReach[s.primaryGenre] = (genreReach[s.primaryGenre] || 0) + s.avgViewers;
+    });
+    const sortedReach = Object.entries(genreReach).sort((a, b) => b[1] - a[1]).slice(0, 12);
+    if (reachChart) reachChart.destroy();
+    reachChart = new Chart(document.getElementById("reachChart"), {
+        type: "bar",
+        data: {
+            labels: sortedReach.map(g => g[0]),
+            datasets: [{
+                data: sortedReach.map(g => g[1]),
+                backgroundColor: "rgba(100,255,218,0.6)",
+                borderColor: "rgba(100,255,218,1)",
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            indexAxis: "y",
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: "#8892b0", callback: v => v >= 1000 ? (v/1000) + "K" : v }, grid: { color: "rgba(35,53,84,0.5)" } },
+                y: { ticks: { color: "#e8e8e8", font: { size: 11 } }, grid: { display: false } }
+            }
+        }
+    });
+
+    // Language Distribution
+    const langCounts = {};
+    filteredData.forEach(s => { langCounts[s.language] = (langCounts[s.language] || 0) + 1; });
+    const sortedLangs = Object.entries(langCounts).sort((a, b) => b[1] - a[1]);
+    const langColors = ["#107C10","#9146FF","#FF6B6B","#FFD93D","#64FFDA","#7B68EE","#FF8C00","#00CED1","#FF69B4","#98FB98"];
+    if (languageChart) languageChart.destroy();
+    languageChart = new Chart(document.getElementById("languageChart"), {
+        type: "doughnut",
+        data: {
+            labels: sortedLangs.map(l => l[0]),
+            datasets: [{
+                data: sortedLangs.map(l => l[1]),
+                backgroundColor: langColors.slice(0, sortedLangs.length),
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: "bottom", labels: { color: "#e8e8e8", padding: 12, font: { size: 11 } } }
+            }
+        }
+    });
+}
+
+// ========================================
+// TABLE
+// ========================================
+function updateTable() {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    const pageData = filteredData.slice(start, end);
+    const maxViewers = Math.max(...filteredData.map(s => s.avgViewers), 1);
+
+    const activeGenre = document.getElementById("genreFilter").value;
+    const tbody = document.getElementById("tableBody");
+    tbody.innerHTML = pageData.map(s => {
+        const platformClass = s.platform === "Twitch" ? "platform-twitch" : s.platform === "YouTube" ? "platform-youtube" : "platform-kick";
+        const barWidth = Math.max((s.avgViewers / maxViewers) * 80, 4);
+        const secondaryTags = s.secondaryGenres.map(g => `<span class="genre-tag secondary">${g}</span>`).join("");
+        const matchCell = activeGenre ? `<td>${s.primaryGenre === activeGenre ? '<span class="match-primary">PRIMARY</span>' : '<span class="match-secondary">Secondary</span>'}</td>` : '';
+        return `<tr>
+            <td class="streamer-name">${s.name}</td>
+            <td><span class="platform-badge ${platformClass}">${s.platform}</span></td>
+            <td><div class="viewer-bar"><span>${s.avgViewers.toLocaleString()}</span><div class="viewer-bar-fill" style="width:${barWidth}px"></div></div></td>
+            <td>${s.followers >= 1000000 ? (s.followers/1000000).toFixed(1)+"M" : (s.followers/1000).toFixed(0)+"K"}</td>
+            ${matchCell}
+            <td><span class="genre-tag">${s.primaryGenre}</span></td>
+            <td><div class="genre-tags">${secondaryTags || '<span style="color:#555">—</span>'}</div></td>
+            <td>${s.topGame}</td>
+            <td><span class="variety-badge"><span class="variety-dot" style="background:${varietyColor(s.varietyScore)}"></span><span class="variety-num" style="color:${varietyColor(s.varietyScore)}">${s.varietyScore}</span>${varietyLabel(s.varietyScore)}</span></td>
+            <td class="language-badge">${s.language}</td>
+        </tr>`;
+    }).join("");
+
+    const totalPages = Math.ceil(filteredData.length / pageSize);
+    document.getElementById("pageInfo").textContent = `Page ${currentPage} of ${totalPages}`;
+    document.getElementById("prevBtn").disabled = currentPage <= 1;
+    document.getElementById("nextBtn").disabled = currentPage >= totalPages;
+    document.getElementById("resultCount").textContent = `${filteredData.length} streamers found`;
+}
+
+function changePage(delta) {
+    const totalPages = Math.ceil(filteredData.length / pageSize);
+    currentPage = Math.max(1, Math.min(currentPage + delta, totalPages));
+    updateTable();
+}
+
+// Start
+init();
+</script>
+</body>
+</html>
