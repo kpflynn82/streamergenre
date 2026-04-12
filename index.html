@@ -142,6 +142,10 @@
         }
         .kpi-card:hover { border-color: var(--border-hover); transform: translateY(-1px); }
         .kpi-card:hover::before { opacity: 1; }
+        .kpi-card.clickable { cursor: pointer; }
+        .kpi-card.clickable:hover { border-color: var(--xbox-green); box-shadow: 0 0 12px var(--xbox-green-glow); }
+        .kpi-card.clickable .kpi-sub::after { content: ' — click to view'; font-style: italic; color: var(--xbox-green-light); opacity: 0; transition: opacity 0.2s; }
+        .kpi-card.clickable:hover .kpi-sub::after { opacity: 1; }
         .kpi-card.highlight {
             border-color: rgba(245, 158, 11, 0.3);
             background: linear-gradient(135deg, rgba(245,158,11,0.06), var(--bg-card));
@@ -416,27 +420,6 @@
             <span style="margin-left:auto; font-size:10px;">Outreach Score = genre match + viewer sweet spot + contact info + variety</span>
         </div>
 
-        <!-- Charts -->
-        <section class="charts-row">
-            <div class="chart-card">
-                <div class="chart-title">Streamers by Genre</div>
-                <div class="chart-subtitle">Click a bar to filter — top 20 genres by streamer count</div>
-                <div class="chart-container"><canvas id="chart-genre-dist"></canvas></div>
-            </div>
-            <div class="chart-card">
-                <div class="chart-title">Top Games by Viewer Reach</div>
-                <div class="chart-subtitle">Highest combined average viewers across all streamers</div>
-                <div class="chart-container"><canvas id="chart-top-games"></canvas></div>
-            </div>
-        </section>
-
-        <!-- Genre Landscape -->
-        <section class="genre-landscape">
-            <div class="chart-title">Genre Landscape</div>
-            <div class="chart-subtitle">Every genre at a glance — click to filter the outreach table below</div>
-            <div class="genre-grid" id="genre-grid"></div>
-        </section>
-
         <!-- Advanced Filters -->
         <section class="filters-bar" id="filters-bar">
             <div class="filter-group">
@@ -507,6 +490,27 @@
                 <div class="page-info" id="page-info"></div>
                 <div class="pagination" id="pagination"></div>
             </div>
+        </section>
+
+        <!-- Charts -->
+        <section class="charts-row">
+            <div class="chart-card">
+                <div class="chart-title">Streamers by Genre</div>
+                <div class="chart-subtitle">Click a bar to filter — top 20 genres by streamer count</div>
+                <div class="chart-container"><canvas id="chart-genre-dist"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">Top Games by Viewer Reach</div>
+                <div class="chart-subtitle">Highest combined average viewers across all streamers</div>
+                <div class="chart-container"><canvas id="chart-top-games"></canvas></div>
+            </div>
+        </section>
+
+        <!-- Genre Landscape -->
+        <section class="genre-landscape">
+            <div class="chart-title">Genre Landscape</div>
+            <div class="chart-subtitle">Every genre at a glance — click to filter the outreach table above</div>
+            <div class="genre-grid" id="genre-grid"></div>
         </section>
 
         <footer class="footer">
@@ -737,11 +741,11 @@
                 { label: 'Sweet Spot (500–5K)', value: sweetSpot.toLocaleString(), sub: `${total ? Math.round(sweetSpot/total*100) : 0}% of results`, highlight: true, amber: true },
                 { label: 'With Email', value: withEmail.toLocaleString(), sub: `${withAnyContact.toLocaleString()} with any contact` },
                 { label: 'Avg Outreach Score', value: avgScore, sub: 'out of 100', green: true },
-                { label: 'High-Score Candidates', value: highScore.toLocaleString(), sub: 'score 70+', green: true }
+                { label: 'High-Score Candidates', value: highScore.toLocaleString(), sub: 'score 70+', green: true, clickable: true, action: 'showHighScore' }
             ];
 
             document.getElementById('kpi-row').innerHTML = kpis.map(k =>
-                `<div class="kpi-card${k.highlight ? ' highlight' : ''}">
+                `<div class="kpi-card${k.highlight ? ' highlight' : ''}${k.clickable ? ' clickable' : ''}"${k.action ? ` onclick="${k.action}()"` : ''}>
                     <div class="kpi-label">${k.label}</div>
                     <div class="kpi-value${k.green ? ' green' : ''}${k.amber ? ' amber' : ''}">${k.value}</div>
                     <div class="kpi-sub">${k.sub}</div>
@@ -846,6 +850,16 @@
             const tp = Math.ceil(state.filtered.length / PAGE_SIZE);
             if (p < 1 || p > tp) return;
             state.page = p;
+            renderTable();
+            document.getElementById('table-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+
+        window.showHighScore = function() {
+            // Filter to only high-score candidates (70+) and scroll to the table
+            state.filtered = state.filtered.filter(s => s.outreachScore >= 70);
+            state.sortCol = 'outreachScore';
+            state.sortDir = 'desc';
+            state.page = 1;
             renderTable();
             document.getElementById('table-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
