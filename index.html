@@ -3,875 +3,1005 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xbox Streamer-Genre Intelligence Dashboard</title>
+    <title>Xbox Streamer-Genre Intelligence</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="data.js"></script>
     <style>
         :root {
             --xbox-green: #107C10;
-            --xbox-green-light: #0e8c0e;
-            --xbox-dark: #1a1a2e;
-            --xbox-darker: #0f0f1e;
-            --surface: #16213e;
-            --surface-light: #1a2744;
-            --text: #e8e8e8;
-            --text-muted: #8892b0;
-            --accent: #64ffda;
-            --accent-secondary: #7b68ee;
-            --border: #233554;
-            --danger: #ff6b6b;
-            --warning: #ffd93d;
-            --twitch: #9146FF;
-            --youtube: #FF0000;
-            --kick: #53FC18;
+            --xbox-green-light: #1B9E1B;
+            --xbox-green-dark: #0B5E0B;
+            --xbox-green-glow: rgba(16, 124, 16, 0.25);
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #111118;
+            --bg-card: #1a1a24;
+            --bg-card-hover: #21212d;
+            --bg-input: #13131b;
+            --border-color: #28283a;
+            --border-hover: #383848;
+            --text-primary: #f0f0f5;
+            --text-secondary: #9d9db5;
+            --text-muted: #6a6a80;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-cyan: #06b6d4;
+            --sweet-spot: #f59e0b;
+            --sweet-spot-glow: rgba(245, 158, 11, 0.15);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: all 0.2s ease;
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--xbox-darker);
-            color: var(--text);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             line-height: 1.5;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
         }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+        .dashboard { max-width: 1600px; margin: 0 auto; padding: 0 32px 48px; }
 
-        .dashboard {
-            max-width: 1440px;
-            margin: 0 auto;
-            padding: 20px;
+        /* ── Header ── */
+        .header {
+            padding: 24px 0 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 24px;
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 16px;
         }
+        .header-left { display: flex; align-items: center; gap: 14px; }
+        .xbox-logo {
+            width: 42px; height: 42px;
+            background: var(--xbox-green);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 17px; color: white;
+            box-shadow: 0 0 20px var(--xbox-green-glow);
+            flex-shrink: 0;
+        }
+        .header-title { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+        .header-title span { color: var(--xbox-green-light); }
+        .header-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+        .header-actions { display: flex; gap: 8px; }
 
-        /* Header */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 24px;
-            background: var(--surface);
-            border-radius: 12px;
-            margin-bottom: 20px;
-            border: 1px solid var(--border);
-            flex-wrap: wrap;
-            gap: 16px;
+        /* ── Buttons ── */
+        .btn {
+            padding: 8px 16px; border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color); background: var(--bg-card);
+            color: var(--text-primary); font-size: 13px; font-weight: 500;
+            cursor: pointer; transition: var(--transition);
+            display: inline-flex; align-items: center; gap: 6px; font-family: inherit;
         }
-        .header-left h1 {
-            font-size: 22px;
-            font-weight: 700;
-            color: #fff;
-        }
-        .header-left h1 span { color: var(--xbox-green); }
-        .header-left p {
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-top: 2px;
-        }
-        .sample-badge {
-            display: inline-block;
-            background: var(--warning);
-            color: #000;
-            font-size: 10px;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 4px;
-            margin-left: 8px;
-            vertical-align: middle;
-        }
+        .btn:hover { background: var(--bg-card-hover); border-color: var(--border-hover); }
+        .btn-primary { background: var(--xbox-green); border-color: var(--xbox-green); color: white; }
+        .btn-primary:hover { background: var(--xbox-green-light); box-shadow: 0 0 16px var(--xbox-green-glow); }
+        .btn svg { width: 15px; height: 15px; }
 
-        /* Filters */
-        .filters {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
+        /* ── Hero / Game Launch Finder ── */
+        .hero {
+            background: linear-gradient(135deg, rgba(16,124,16,0.08) 0%, rgba(16,124,16,0.02) 100%);
+            border: 1px solid rgba(16,124,16,0.2);
+            border-radius: var(--radius);
+            padding: 28px 32px;
+            margin-bottom: 24px;
         }
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
+        .hero-label {
+            font-size: 11px; font-weight: 600; color: var(--xbox-green-light);
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
         }
-        .filter-group label {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-muted);
-            font-weight: 600;
+        .hero-title { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
+        .hero-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; max-width: 600px; }
+        .hero-controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+        .hero-field { display: flex; flex-direction: column; gap: 4px; }
+        .hero-field-label {
+            font-size: 11px; font-weight: 500; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.5px;
         }
-        select, input[type="text"], input[type="number"] {
-            background: var(--xbox-darker);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            min-width: 160px;
+        .hero-select, .hero-input {
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(16,124,16,0.3);
+            border-radius: var(--radius-sm); color: var(--text-primary);
+            padding: 10px 14px; font-size: 14px; font-family: inherit;
+            transition: var(--transition); outline: none; min-width: 200px;
         }
-        select:focus, input:focus { outline: none; border-color: var(--xbox-green); }
-        input[type="text"] { min-width: 220px; }
-        input[type="number"] { min-width: 100px; }
+        .hero-select:focus, .hero-input:focus {
+            border-color: var(--xbox-green); box-shadow: 0 0 0 3px var(--xbox-green-glow);
+        }
+        .hero-input::placeholder { color: var(--text-muted); }
+        .hero-btn {
+            padding: 10px 24px; background: var(--xbox-green); border: none;
+            border-radius: var(--radius-sm); color: white; font-size: 14px;
+            font-weight: 600; cursor: pointer; transition: var(--transition);
+            font-family: inherit;
+        }
+        .hero-btn:hover { background: var(--xbox-green-light); box-shadow: 0 0 20px var(--xbox-green-glow); }
 
-        /* KPI Cards */
-        .kpis {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 20px;
+        /* ── KPI Cards ── */
+        .kpi-row {
+            display: grid; grid-template-columns: repeat(5, 1fr);
+            gap: 14px; margin-bottom: 24px;
         }
         .kpi-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 18px 20px;
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: var(--radius); padding: 18px 20px;
+            transition: var(--transition); position: relative; overflow: hidden;
         }
-        .kpi-card .label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: var(--text-muted);
-            font-weight: 600;
+        .kpi-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; background: var(--xbox-green); opacity: 0;
+            transition: opacity 0.2s ease;
         }
-        .kpi-card .value {
-            font-size: 32px;
-            font-weight: 700;
-            color: #fff;
-            margin-top: 4px;
+        .kpi-card:hover { border-color: var(--border-hover); transform: translateY(-1px); }
+        .kpi-card:hover::before { opacity: 1; }
+        .kpi-card.highlight {
+            border-color: rgba(245, 158, 11, 0.3);
+            background: linear-gradient(135deg, rgba(245,158,11,0.06), var(--bg-card));
         }
-        .kpi-card .sub {
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-top: 2px;
+        .kpi-card.highlight::before { background: var(--sweet-spot); opacity: 1; }
+        .kpi-label {
+            font-size: 11px; font-weight: 500; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 6px;
         }
+        .kpi-value { font-size: 26px; font-weight: 700; letter-spacing: -1px; line-height: 1.1; }
+        .kpi-sub { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+        .kpi-value.green { color: var(--xbox-green-light); }
+        .kpi-value.amber { color: var(--sweet-spot); }
 
-        /* Charts Section */
-        .charts-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 20px;
-        }
+        /* ── Charts Row ── */
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
         .chart-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 20px;
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: var(--radius); padding: 22px; transition: var(--transition);
         }
-        .chart-card h3 {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 16px;
-            color: var(--text-muted);
-        }
-        .chart-card canvas { max-height: 300px; }
+        .chart-card:hover { border-color: var(--border-hover); }
+        .chart-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+        .chart-subtitle { font-size: 11px; color: var(--text-muted); margin-bottom: 16px; }
+        .chart-container { position: relative; width: 100%; }
 
-        /* Streamer Table */
+        /* ── Genre Landscape ── */
+        .genre-landscape {
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: var(--radius); padding: 22px; margin-bottom: 24px;
+        }
+        .genre-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 10px; margin-top: 16px;
+        }
+        .genre-item {
+            background: var(--bg-secondary); border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm); padding: 12px 14px;
+            cursor: pointer; transition: var(--transition);
+        }
+        .genre-item:hover { border-color: var(--xbox-green); background: rgba(16,124,16,0.05); }
+        .genre-item.active { border-color: var(--xbox-green); background: rgba(16,124,16,0.1); }
+        .genre-item-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .genre-name { font-size: 13px; font-weight: 600; }
+        .genre-badge {
+            font-size: 11px; color: var(--xbox-green-light); font-weight: 600;
+            background: rgba(16,124,16,0.15); padding: 1px 8px; border-radius: 20px;
+        }
+        .genre-bar-track { width: 100%; height: 3px; background: var(--bg-primary); border-radius: 2px; margin-bottom: 6px; overflow: hidden; }
+        .genre-bar-fill { height: 100%; background: linear-gradient(90deg, var(--xbox-green), var(--xbox-green-light)); border-radius: 2px; transition: width 0.5s ease; }
+        .genre-meta { font-size: 11px; color: var(--text-muted); }
+        .genre-meta strong { color: var(--text-secondary); font-weight: 500; }
+        .genre-sweet-spot {
+            font-size: 10px; color: var(--sweet-spot); margin-top: 3px;
+        }
+
+        /* ── Advanced Filters ── */
+        .filters-bar {
+            display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: flex-end;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 3px; }
+        .filter-label {
+            font-size: 10px; font-weight: 500; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .filter-input, .filter-select {
+            background: var(--bg-input); border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm); color: var(--text-primary);
+            padding: 7px 10px; font-size: 12px; font-family: inherit;
+            transition: var(--transition); outline: none;
+        }
+        .filter-input:focus, .filter-select:focus { border-color: var(--xbox-green); box-shadow: 0 0 0 3px var(--xbox-green-glow); }
+        .filter-select { min-width: 140px; cursor: pointer; }
+        .filter-input { min-width: 200px; }
+        .filter-input::placeholder { color: var(--text-muted); }
+
+        /* ── Table ── */
         .table-section {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: var(--radius); overflow: hidden;
         }
         .table-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-            gap: 10px;
+            padding: 16px 22px; display: flex; justify-content: space-between;
+            align-items: center; border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap; gap: 10px;
         }
-        .table-header h3 {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-muted);
+        .table-header-left { display: flex; align-items: center; gap: 10px; }
+        .table-title { font-size: 14px; font-weight: 600; }
+        .table-count {
+            font-size: 11px; color: var(--text-muted); background: var(--bg-secondary);
+            padding: 2px 10px; border-radius: 20px;
         }
-        .result-count {
-            font-size: 12px;
-            color: var(--text-muted);
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        thead th {
+            background: var(--bg-secondary); padding: 10px 14px;
+            font-size: 10px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.5px; color: var(--text-muted); text-align: left;
+            white-space: nowrap; cursor: pointer; user-select: none;
+            border-bottom: 1px solid var(--border-color);
+            transition: color 0.15s ease; position: sticky; top: 0; z-index: 2;
         }
-        .table-wrap {
-            overflow-x: auto;
+        thead th:hover { color: var(--text-primary); }
+        thead th.sorted { color: var(--xbox-green-light); }
+        thead th .sort-icon { display: inline-block; margin-left: 3px; opacity: 0.4; font-size: 9px; }
+        thead th.sorted .sort-icon { opacity: 1; }
+        tbody tr {
+            border-bottom: 1px solid rgba(40,40,58,0.5);
+            transition: background 0.15s ease;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        th {
-            text-align: left;
-            padding: 10px 14px;
-            background: var(--xbox-darker);
-            color: var(--text-muted);
-            font-weight: 600;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            cursor: pointer;
-            white-space: nowrap;
-            user-select: none;
-            position: sticky;
-            top: 0;
-        }
-        th:hover { color: var(--accent); }
-        th .sort-arrow { margin-left: 4px; opacity: 0.4; }
-        th.active .sort-arrow { opacity: 1; color: var(--xbox-green); }
-        td {
-            padding: 10px 14px;
-            border-bottom: 1px solid var(--border);
-            white-space: nowrap;
-        }
-        tr:hover td { background: rgba(100,255,218,0.03); }
+        tbody tr:hover { background: rgba(16,124,16,0.04); }
+        tbody tr.sweet-spot-row { background: rgba(245,158,11,0.03); }
+        tbody tr.sweet-spot-row:hover { background: rgba(245,158,11,0.06); }
+        tbody td { padding: 10px 14px; font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+        .streamer-name { color: var(--text-primary); font-weight: 500; }
+        .streamer-name a { color: inherit; text-decoration: none; transition: color 0.15s; }
+        .streamer-name a:hover { color: var(--xbox-green-light); }
         .platform-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
+            display: inline-block; padding: 1px 7px; border-radius: 4px;
+            font-size: 10px; font-weight: 600; letter-spacing: 0.3px;
         }
-        .platform-twitch { background: rgba(145,70,255,0.2); color: var(--twitch); }
-        .platform-youtube { background: rgba(255,0,0,0.15); color: var(--youtube); }
-        .platform-kick { background: rgba(83,252,24,0.15); color: var(--kick); }
-        .genre-tags {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-        }
+        .platform-twitch { background: rgba(145,70,255,0.15); color: #b48eff; }
+        .platform-kick { background: rgba(83,252,24,0.12); color: #53fc18; }
         .genre-tag {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 500;
-            background: rgba(107,203,119,0.12);
-            color: var(--xbox-green);
-            border: 1px solid rgba(107,203,119,0.2);
+            display: inline-block; padding: 1px 7px;
+            background: rgba(16,124,16,0.12); color: var(--xbox-green-light);
+            border-radius: 4px; font-size: 11px; font-weight: 500;
         }
-        .genre-tag.secondary {
-            background: rgba(123,104,238,0.12);
-            color: var(--accent-secondary);
-            border-color: rgba(123,104,238,0.2);
+        .genre-secondary {
+            display: inline-block; padding: 1px 5px;
+            background: rgba(255,255,255,0.05); color: var(--text-muted);
+            border-radius: 3px; font-size: 10px; margin-left: 3px;
         }
-        .streamer-name {
-            font-weight: 600;
-            color: #fff;
+        .sweet-spot-indicator {
+            display: inline-block; width: 8px; height: 8px;
+            background: var(--sweet-spot); border-radius: 50%;
+            margin-right: 6px; box-shadow: 0 0 6px rgba(245,158,11,0.4);
         }
-        .language-badge {
-            font-size: 11px;
-            color: var(--text-muted);
+        .outreach-score {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 32px; padding: 2px 8px; border-radius: 6px;
+            font-size: 12px; font-weight: 700; letter-spacing: -0.3px;
         }
-        .viewer-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .score-high { background: rgba(16,124,16,0.2); color: #3dd63d; }
+        .score-med { background: rgba(59,130,246,0.15); color: #60a5fa; }
+        .score-low { background: rgba(255,255,255,0.05); color: var(--text-muted); }
+        .contact-links { display: flex; gap: 4px; }
+        .contact-link {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 24px; height: 24px; border-radius: 5px;
+            background: var(--bg-secondary); color: var(--text-muted);
+            text-decoration: none; font-size: 10px; font-weight: 700;
+            transition: var(--transition); border: 1px solid transparent;
         }
-        .viewer-bar-fill {
-            height: 6px;
-            border-radius: 3px;
-            background: var(--xbox-green);
-            min-width: 4px;
-        }
-
-        /* Pagination */
-        .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
-            margin-top: 16px;
-        }
-        .pagination button {
-            background: var(--xbox-darker);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 6px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-        }
-        .pagination button:hover { border-color: var(--xbox-green); }
-        .pagination button:disabled { opacity: 0.3; cursor: default; }
-        .pagination .page-info { font-size: 13px; color: var(--text-muted); }
-
-        /* Unified Filter Bar */
-        .filter-bar {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 18px 24px;
-            margin-bottom: 20px;
-        }
-        .filter-bar-row {
-            display: flex;
-            gap: 12px;
-            align-items: end;
-            flex-wrap: wrap;
-        }
-        .reset-btn {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 13px;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-        .reset-btn:hover { border-color: var(--danger); color: var(--danger); }
-        .genre-hint {
-            margin-top: 10px;
-            font-size: 12px;
-            color: var(--accent);
-            min-height: 18px;
-        }
-        .match-primary {
-            color: var(--xbox-green);
-            font-weight: 600;
-            font-size: 11px;
-        }
-        .match-secondary {
-            color: var(--accent-secondary);
-            font-weight: 500;
-            font-size: 11px;
-        }
+        .contact-link:hover { color: var(--text-primary); border-color: var(--border-hover); }
+        .contact-link.has-data { color: var(--xbox-green-light); }
         .variety-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 11px;
-            font-weight: 600;
-            white-space: nowrap;
+            display: inline-block; padding: 1px 7px; border-radius: 4px;
+            font-size: 10px; font-weight: 600;
         }
-        .variety-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .variety-num {
-            font-weight: 700;
-            font-size: 13px;
-        }
+        .variety-specialist { background: rgba(139,92,246,0.15); color: #b48eff; }
+        .variety-moderate { background: rgba(59,130,246,0.15); color: #60a5fa; }
+        .variety-variety { background: rgba(6,182,212,0.15); color: #22d3ee; }
 
-        /* Footer */
+        /* ── Pagination ── */
+        .table-footer {
+            padding: 12px 22px; display: flex; justify-content: space-between;
+            align-items: center; border-top: 1px solid var(--border-color);
+            flex-wrap: wrap; gap: 8px;
+        }
+        .page-info { font-size: 11px; color: var(--text-muted); }
+        .pagination { display: flex; gap: 3px; }
+        .page-btn {
+            padding: 5px 10px; border-radius: 6px;
+            border: 1px solid var(--border-color); background: var(--bg-secondary);
+            color: var(--text-secondary); font-size: 11px; font-weight: 500;
+            cursor: pointer; transition: var(--transition); font-family: inherit;
+        }
+        .page-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
+        .page-btn.active { background: var(--xbox-green); border-color: var(--xbox-green); color: white; }
+        .page-btn:disabled { opacity: 0.3; cursor: default; }
+
         .footer {
-            text-align: center;
-            padding: 20px;
-            color: var(--text-muted);
-            font-size: 12px;
+            margin-top: 28px; padding: 16px 0;
+            border-top: 1px solid var(--border-color);
+            display: flex; justify-content: space-between;
+            font-size: 11px; color: var(--text-muted);
         }
 
-        @media (max-width: 900px) {
+        /* ── Sweet spot legend ── */
+        .legend {
+            display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+            padding: 10px 0; font-size: 11px; color: var(--text-muted);
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+        }
+        .legend-dot.sweet { background: var(--sweet-spot); box-shadow: 0 0 6px rgba(245,158,11,0.4); }
+        .legend-dot.score-h { background: #3dd63d; }
+        .legend-dot.score-m { background: #60a5fa; }
+
+        /* ── Responsive ── */
+        @media (max-width: 1200px) {
+            .kpi-row { grid-template-columns: repeat(3, 1fr); }
             .charts-row { grid-template-columns: 1fr; }
-            header { flex-direction: column; align-items: flex-start; }
         }
-        @media (max-width: 600px) {
-            .kpis { grid-template-columns: 1fr 1fr; }
+        @media (max-width: 768px) {
+            .kpi-row { grid-template-columns: 1fr 1fr; }
+            .dashboard { padding: 0 16px 32px; }
+            .hero { padding: 20px; }
+            .hero-controls { flex-direction: column; }
+            .hero-select, .hero-input { width: 100%; min-width: unset; }
         }
+
+        /* ── Animations ── */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .hero { animation: fadeIn 0.3s ease both; }
+        .kpi-card, .chart-card, .genre-landscape, .table-section {
+            animation: fadeIn 0.4s ease both;
+        }
+        .kpi-card:nth-child(2) { animation-delay: 0.04s; }
+        .kpi-card:nth-child(3) { animation-delay: 0.08s; }
+        .kpi-card:nth-child(4) { animation-delay: 0.12s; }
+        .kpi-card:nth-child(5) { animation-delay: 0.16s; }
     </style>
 </head>
 <body>
-<div class="dashboard">
+    <div class="dashboard">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="xbox-logo">X</div>
+                <div>
+                    <div class="header-title">Streamer-Genre <span>Intelligence</span></div>
+                    <div class="header-subtitle">Find the best streamers to showcase upcoming Xbox game launches</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn" onclick="exportCSV()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Export Outreach List
+                </button>
+            </div>
+        </header>
 
-    <header>
-        <div class="header-left">
-            <h1><span>Xbox</span> Streamer-Genre Intelligence<span class="sample-badge">4437 STREAMERS</span></h1>
-            <p>Find the right creators for your next game launch — filter by genre, platform, audience size, and language</p>
+        <!-- Hero: Game Launch Finder -->
+        <section class="hero">
+            <div class="hero-label">Game Launch Finder</div>
+            <div class="hero-title">Which streamers should we contact?</div>
+            <div class="hero-desc">Select a genre for your upcoming game. We'll show the best outreach candidates — mid-tier streamers (500–5K viewers) who play this genre and are reachable.</div>
+            <div class="hero-controls">
+                <div class="hero-field">
+                    <span class="hero-field-label">Game Genre</span>
+                    <select class="hero-select" id="hero-genre"><option value="">Choose a genre…</option></select>
+                </div>
+                <div class="hero-field">
+                    <span class="hero-field-label">Search</span>
+                    <input type="text" class="hero-input" id="hero-search" placeholder="Search by streamer or game name…">
+                </div>
+                <button class="hero-btn" onclick="clearAllFilters()">Reset</button>
+            </div>
+        </section>
+
+        <!-- KPI Cards -->
+        <section class="kpi-row" id="kpi-row"></section>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item"><div class="legend-dot sweet"></div> Sweet Spot (500–5K viewers)</div>
+            <div class="legend-item"><div class="legend-dot score-h"></div> High outreach score</div>
+            <div class="legend-item"><div class="legend-dot score-m"></div> Medium outreach score</div>
+            <span style="margin-left:auto; font-size:10px;">Outreach Score = genre match + viewer sweet spot + contact info + variety</span>
         </div>
-    </header>
 
-    <!-- Unified Smart Filter Bar -->
-    <div class="filter-bar">
-        <div class="filter-bar-row">
-            <div class="filter-group">
-                <label>Search Streamer</label>
-                <input type="text" id="searchInput" placeholder="Search by name..." oninput="applyFilters()">
+        <!-- Charts -->
+        <section class="charts-row">
+            <div class="chart-card">
+                <div class="chart-title">Streamers by Genre</div>
+                <div class="chart-subtitle">Click a bar to filter — top 20 genres by streamer count</div>
+                <div class="chart-container"><canvas id="chart-genre-dist"></canvas></div>
             </div>
-            <div class="filter-group">
-                <label>Game Genre</label>
-                <select id="genreFilter" onchange="applyFilters()">
-                    <option value="">All Genres</option>
-                </select>
+            <div class="chart-card">
+                <div class="chart-title">Top Games by Viewer Reach</div>
+                <div class="chart-subtitle">Highest combined average viewers across all streamers</div>
+                <div class="chart-container"><canvas id="chart-top-games"></canvas></div>
             </div>
+        </section>
+
+        <!-- Genre Landscape -->
+        <section class="genre-landscape">
+            <div class="chart-title">Genre Landscape</div>
+            <div class="chart-subtitle">Every genre at a glance — click to filter the outreach table below</div>
+            <div class="genre-grid" id="genre-grid"></div>
+        </section>
+
+        <!-- Advanced Filters -->
+        <section class="filters-bar" id="filters-bar">
             <div class="filter-group">
-                <label>Platform</label>
-                <select id="platformFilter" onchange="applyFilters()">
-                    <option value="">All Platforms</option>
+                <span class="filter-label">Platform</span>
+                <select class="filter-select" id="filter-platform">
+                    <option value="">All</option>
                     <option value="Twitch">Twitch</option>
-                    <option value="YouTube">YouTube</option>
                     <option value="Kick">Kick</option>
                 </select>
             </div>
             <div class="filter-group">
-                <label>Min Avg Viewers</label>
-                <input type="number" id="minViewers" placeholder="500" value="500" onchange="applyFilters()">
+                <span class="filter-label">Language</span>
+                <select class="filter-select" id="filter-language"><option value="">All</option></select>
             </div>
             <div class="filter-group">
-                <label>Max Avg Viewers</label>
-                <input type="number" id="maxViewers" placeholder="No max" onchange="applyFilters()">
-            </div>
-            <div class="filter-group">
-                <label>Language</label>
-                <select id="languageFilter" onchange="applyFilters()">
-                    <option value="">All Languages</option>
+                <span class="filter-label">Viewer Range</span>
+                <select class="filter-select" id="filter-viewers">
+                    <option value="0">Any</option>
+                    <option value="sweet">Sweet Spot (500–5K)</option>
+                    <option value="100">100+</option>
+                    <option value="500">500+</option>
+                    <option value="1000">1,000+</option>
+                    <option value="5000">5,000+</option>
+                    <option value="10000">10,000+</option>
                 </select>
             </div>
             <div class="filter-group">
-                <label>Variety Score</label>
-                <select id="varietyFilter" onchange="applyFilters()">
+                <span class="filter-label">Variety</span>
+                <select class="filter-select" id="filter-variety">
                     <option value="">Any</option>
-                    <option value="explorer">Explorer (8-10)</option>
-                    <option value="rotator">Rotator (5-7)</option>
-                    <option value="specialist">Specialist (3-4)</option>
-                    <option value="onetrick">One-Trick (1-2)</option>
-                    <option value="open">Open to New (5+)</option>
+                    <option value="Variety">Variety (likely to try new games)</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="Specialist">Specialist (genre-focused)</option>
                 </select>
             </div>
-            <button class="reset-btn" onclick="resetFilters()">Reset</button>
-        </div>
-        <div class="genre-hint" id="genreHint"></div>
+            <div class="filter-group">
+                <span class="filter-label">Has Contact</span>
+                <select class="filter-select" id="filter-contact">
+                    <option value="">Any</option>
+                    <option value="yes">Has contact info</option>
+                    <option value="email">Has email</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- Streamer Table -->
+        <section class="table-section" id="table-section">
+            <div class="table-header">
+                <div class="table-header-left">
+                    <div class="table-title">Outreach Candidates</div>
+                    <div class="table-count" id="table-count">0</div>
+                </div>
+                <div class="header-actions">
+                    <button class="btn" onclick="clearAllFilters()">Clear All</button>
+                    <button class="btn btn-primary" onclick="exportCSV()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export
+                    </button>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr id="table-head"></tr></thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
+            <div class="table-footer">
+                <div class="page-info" id="page-info"></div>
+                <div class="pagination" id="pagination"></div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <span>Xbox Streamer-Genre Intelligence</span>
+            <span id="data-date"></span>
+        </footer>
     </div>
 
-    <!-- KPI Cards -->
-    <div class="kpis">
-        <div class="kpi-card">
-            <div class="label">Total Streamers</div>
-            <div class="value" id="kpiTotal">-</div>
-            <div class="sub" id="kpiTotalSub">matching filters</div>
-        </div>
-        <div class="kpi-card">
-            <div class="label">Genres Covered</div>
-            <div class="value" id="kpiGenres">-</div>
-            <div class="sub">of 59 VGMS genres</div>
-        </div>
-        <div class="kpi-card">
-            <div class="label">Total Reach</div>
-            <div class="value" id="kpiReach">-</div>
-            <div class="sub">combined avg viewers</div>
-        </div>
-        <div class="kpi-card">
-            <div class="label">Avg Viewers / Streamer</div>
-            <div class="value" id="kpiAvg">-</div>
-            <div class="sub">filtered average</div>
-        </div>
-    </div>
-
-    <!-- Streamer Table -->
-    <div class="table-section">
-        <div class="table-header">
-            <h3>Streamer Database</h3>
-            <div class="result-count" id="resultCount"></div>
-        </div>
-        <div class="table-wrap">
-            <table id="streamerTable">
-                <thead>
-                    <tr>
-                        <th data-col="name" onclick="sortTable('name')">Streamer <span class="sort-arrow">▲</span></th>
-                        <th data-col="platform" onclick="sortTable('platform')">Platform <span class="sort-arrow">▲</span></th>
-                        <th data-col="avgViewers" onclick="sortTable('avgViewers')">Avg Viewers <span class="sort-arrow">▲</span></th>
-                        <th data-col="followers" onclick="sortTable('followers')">Followers <span class="sort-arrow">▲</span></th>
-                        <th id="matchCol" style="display:none">Match</th>
-                        <th data-col="primaryGenre" onclick="sortTable('primaryGenre')">Primary Genre <span class="sort-arrow">▲</span></th>
-                        <th>Secondary Genres</th>
-                        <th data-col="topGame" onclick="sortTable('topGame')">Top Game <span class="sort-arrow">▲</span></th>
-                        <th data-col="varietyScore" onclick="sortTable('varietyScore')">Variety <span class="sort-arrow">▲</span></th>
-                        <th data-col="language" onclick="sortTable('language')">Language <span class="sort-arrow">▲</span></th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
-            </table>
-        </div>
-        <div class="pagination">
-            <button id="prevBtn" onclick="changePage(-1)">← Previous</button>
-            <span class="page-info" id="pageInfo"></span>
-            <button id="nextBtn" onclick="changePage(1)">Next →</button>
-        </div>
-    </div>
-
-    <!-- Charts -->
-    <div class="charts-row">
-        <div class="chart-card">
-            <h3>Streamers by Genre (Top 15)</h3>
-            <canvas id="genreChart"></canvas>
-        </div>
-        <div class="chart-card">
-            <h3>Platform Distribution</h3>
-            <canvas id="platformChart"></canvas>
-        </div>
-    </div>
-    <div class="charts-row">
-        <div class="chart-card">
-            <h3>Genre by Total Audience Reach</h3>
-            <canvas id="reachChart"></canvas>
-        </div>
-        <div class="chart-card">
-            <h3>Language Distribution</h3>
-            <canvas id="languageChart"></canvas>
-        </div>
-    </div>
-
-    <div class="footer">
-        <p>Xbox Streamer-Genre Intelligence Dashboard — Prototype with sample data based on public streaming analytics</p>
-        <p style="margin-top:4px;">Data sources: TwitchTracker, Streams Charts, SullyGnome | Genre taxonomy: VGMS (59 genres)</p>
-        <p style="margin-top:4px;">In production, this would connect to Streams Charts API or similar for live data refresh</p>
-    </div>
-</div>
-
-<script src="data.js"></script>
     <script>
-// ========================================
-// GAME → VGMS GENRE MAPPING TABLE
-// ========================================
+    (function() {
+        'use strict';
 
+        const PAGE_SIZE = 50;
+        const SWEET_LO = 500, SWEET_HI = 5000;
+        let selectedGenre = '';
 
-// ========================================
-// STREAMER DATABASE (sample data based on public analytics)
-// ========================================
+        let state = {
+            data: [],
+            filtered: [],
+            sortCol: 'outreachScore',
+            sortDir: 'desc',
+            page: 1,
+            charts: {}
+        };
 
+        /* ── Outreach Score ──
+           0-100 composite:
+           - Genre match (selected genre is in their top 3): 30pts
+           - Sweet spot viewers (500-5K): 25pts, partial for close
+           - Has contact info: 25pts (email=25, social only=15)
+           - Variety score (higher = more likely to try new games): 20pts
+        */
+        function calcOutreachScore(s, genre) {
+            let score = 0;
+            const genres = [s.primaryGenre, ...(s.secondaryGenres || [])].filter(Boolean);
 
-// ========================================
-// VARIETY SCORE SYSTEM
-// ========================================
-// Known variety scores from public streaming behavior (manual overrides)
-
-
-
-// Compute variety score: use override if available, else estimate from secondary genres
-function getVarietyScore(s) {
-    if (VARIETY_OVERRIDES[s.name] !== undefined) return VARIETY_OVERRIDES[s.name];
-    // Fallback: estimate from secondary genres count
-    const sg = s.secondaryGenres.length;
-    if (sg >= 3) return 7;
-    if (sg === 2) return 5;
-    if (sg === 1) return 3;
-    return 2;
-}
-
-// Variety score label
-function varietyLabel(score) {
-    if (score >= 8) return "Explorer";
-    if (score >= 5) return "Rotator";
-    if (score >= 3) return "Specialist";
-    return "One-Trick";
-}
-
-// Variety score color
-function varietyColor(score) {
-    if (score >= 8) return "#64ffda";
-    if (score >= 5) return "#107C10";
-    if (score >= 3) return "#ffd93d";
-    return "#ff6b6b";
-}
-
-// Add variety scores to all streamers
-STREAMERS.forEach(s => { s.varietyScore = getVarietyScore(s); });
-
-// ========================================
-// STATE
-// ========================================
-let filteredData = [...STREAMERS];
-let sortCol = "avgViewers";
-let sortDir = "desc";
-let currentPage = 1;
-const pageSize = 50;
-
-// ========================================
-// INITIALIZATION
-// ========================================
-function init() {
-    // Populate genre filter
-    const genres = [...new Set(STREAMERS.map(s => s.primaryGenre))].sort();
-    const genreSelect = document.getElementById("genreFilter");
-    genres.forEach(g => {
-        genreSelect.innerHTML += `<option value="${g}">${g}</option>`;
-    });
-
-    // Populate language filter
-    const languages = [...new Set(STREAMERS.map(s => s.language))].sort();
-    const langSelect = document.getElementById("languageFilter");
-    languages.forEach(l => {
-        langSelect.innerHTML += `<option value="${l}">${l}</option>`;
-    });
-
-    applyFilters();
-}
-
-function resetFilters() {
-    document.getElementById("searchInput").value = "";
-    document.getElementById("genreFilter").value = "";
-    document.getElementById("platformFilter").value = "";
-    document.getElementById("minViewers").value = "500";
-            document.getElementById("maxViewers").value = "";
-    document.getElementById("languageFilter").value = "";
-    document.getElementById("varietyFilter").value = "";
-    applyFilters();
-}
-
-// ========================================
-// FILTERING
-// ========================================
-function applyFilters() {
-    const search = document.getElementById("searchInput").value.toLowerCase();
-    const genre = document.getElementById("genreFilter").value;
-    const platform = document.getElementById("platformFilter").value;
-    const minViewers = parseInt(document.getElementById("minViewers").value) || 0;
-            const maxViewers = parseInt(document.getElementById("maxViewers").value) || Infinity;
-    const language = document.getElementById("languageFilter").value;
-    const variety = document.getElementById("varietyFilter").value;
-
-    filteredData = STREAMERS.filter(s => {
-        if (search && !s.name.toLowerCase().includes(search)) return false;
-        if (genre && s.primaryGenre !== genre && !s.secondaryGenres.includes(genre)) return false;
-        if (platform && s.platform !== platform) return false;
-        if (s.avgViewers < minViewers) return false;
-                if (maxViewers !== Infinity && s.avgViewers > maxViewers) return false;
-        if (language && s.language !== language) return false;
-        if (variety === "explorer" && s.varietyScore < 8) return false;
-        if (variety === "rotator" && (s.varietyScore < 5 || s.varietyScore > 7)) return false;
-        if (variety === "specialist" && (s.varietyScore < 3 || s.varietyScore > 4)) return false;
-        if (variety === "onetrick" && s.varietyScore > 2) return false;
-        if (variety === "open" && s.varietyScore < 5) return false;
-        return true;
-    });
-
-    // When genre is selected, sort by match quality (primary first), then by viewers
-    if (genre) {
-        filteredData.sort((a, b) => {
-            const aIsPrimary = a.primaryGenre === genre ? 1 : 0;
-            const bIsPrimary = b.primaryGenre === genre ? 1 : 0;
-            if (aIsPrimary !== bIsPrimary) return bIsPrimary - aIsPrimary;
-            return b.avgViewers - a.avgViewers;
-        });
-    } else {
-        sortData();
-    }
-
-    // Update genre hint
-    const hintEl = document.getElementById("genreHint");
-    if (genre) {
-        const primaryCount = filteredData.filter(s => s.primaryGenre === genre).length;
-        const secondaryCount = filteredData.length - primaryCount;
-        hintEl.innerHTML = `Showing <strong>${filteredData.length}</strong> streamers for <strong>${genre}</strong> — ${primaryCount} primary match${primaryCount !== 1 ? 'es' : ''}, ${secondaryCount} secondary match${secondaryCount !== 1 ? 'es' : ''}. Primary matches are ranked first.`;
-    } else {
-        hintEl.innerHTML = '';
-    }
-
-    // Show/hide match column
-    document.getElementById("matchCol").style.display = genre ? "" : "none";
-
-    currentPage = 1;
-    updateKPIs();
-    updateCharts();
-    updateTable();
-}
-
-// ========================================
-// SORTING
-// ========================================
-function sortData() {
-    filteredData.sort((a, b) => {
-        let va = a[sortCol], vb = b[sortCol];
-        if (typeof va === "string") { va = va.toLowerCase(); vb = vb.toLowerCase(); }
-        if (va < vb) return sortDir === "asc" ? -1 : 1;
-        if (va > vb) return sortDir === "asc" ? 1 : -1;
-        return 0;
-    });
-}
-
-function sortTable(col) {
-    if (sortCol === col) {
-        sortDir = sortDir === "asc" ? "desc" : "asc";
-    } else {
-        sortCol = col;
-        sortDir = col === "avgViewers" || col === "followers" ? "desc" : "asc";
-    }
-    document.querySelectorAll("th").forEach(th => {
-        th.classList.remove("active");
-        const arrow = th.querySelector(".sort-arrow");
-        if (arrow) arrow.textContent = "▲";
-    });
-    const activeTh = document.querySelector(`th[data-col="${col}"]`);
-    if (activeTh) {
-        activeTh.classList.add("active");
-        activeTh.querySelector(".sort-arrow").textContent = sortDir === "asc" ? "▲" : "▼";
-    }
-    sortData();
-    updateTable();
-}
-
-// ========================================
-// KPIs
-// ========================================
-function updateKPIs() {
-    document.getElementById("kpiTotal").textContent = filteredData.length.toLocaleString();
-    const genres = new Set();
-    filteredData.forEach(s => { genres.add(s.primaryGenre); s.secondaryGenres.forEach(g => genres.add(g)); });
-    document.getElementById("kpiGenres").textContent = genres.size;
-    const totalReach = filteredData.reduce((sum, s) => sum + s.avgViewers, 0);
-    document.getElementById("kpiReach").textContent = totalReach >= 1000000 ? (totalReach / 1000000).toFixed(1) + "M" : totalReach >= 1000 ? (totalReach / 1000).toFixed(0) + "K" : totalReach;
-    const avg = filteredData.length ? Math.round(totalReach / filteredData.length) : 0;
-    document.getElementById("kpiAvg").textContent = avg >= 1000 ? (avg / 1000).toFixed(1) + "K" : avg;
-}
-
-// ========================================
-// CHARTS
-// ========================================
-let genreChart, platformChart, reachChart, languageChart;
-
-function updateCharts() {
-    // Genre Distribution
-    const genreCounts = {};
-    filteredData.forEach(s => {
-        genreCounts[s.primaryGenre] = (genreCounts[s.primaryGenre] || 0) + 1;
-    });
-    const sortedGenres = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]).slice(0, 15);
-
-    if (genreChart) genreChart.destroy();
-    genreChart = new Chart(document.getElementById("genreChart"), {
-        type: "bar",
-        data: {
-            labels: sortedGenres.map(g => g[0]),
-            datasets: [{
-                data: sortedGenres.map(g => g[1]),
-                backgroundColor: "rgba(16,124,16,0.7)",
-                borderColor: "rgba(16,124,16,1)",
-                borderWidth: 1,
-                borderRadius: 4
-            }]
-        },
-        options: {
-            indexAxis: "y",
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { ticks: { color: "#8892b0" }, grid: { color: "rgba(35,53,84,0.5)" } },
-                y: { ticks: { color: "#e8e8e8", font: { size: 11 } }, grid: { display: false } }
+            // Genre match
+            if (genre) {
+                if (s.primaryGenre === genre) score += 30;
+                else if (genres.includes(genre)) score += 20;
+            } else {
+                score += 15; // no genre selected, neutral
             }
-        }
-    });
 
-    // Platform Distribution
-    const platformCounts = { Twitch: 0, YouTube: 0, Kick: 0 };
-    filteredData.forEach(s => { platformCounts[s.platform] = (platformCounts[s.platform] || 0) + 1; });
-    if (platformChart) platformChart.destroy();
-    platformChart = new Chart(document.getElementById("platformChart"), {
-        type: "doughnut",
-        data: {
-            labels: Object.keys(platformCounts).filter(k => platformCounts[k] > 0),
-            datasets: [{
-                data: Object.values(platformCounts).filter(v => v > 0),
-                backgroundColor: ["#9146FF", "#FF0000", "#53FC18"],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: "bottom", labels: { color: "#e8e8e8", padding: 16, font: { size: 12 } } }
+            // Sweet spot viewers
+            const v = s.avgViewers || 0;
+            if (v >= SWEET_LO && v <= SWEET_HI) {
+                score += 25;
+            } else if (v > SWEET_HI && v <= 10000) {
+                score += 15;
+            } else if (v >= 200 && v < SWEET_LO) {
+                score += 10;
+            } else if (v > 10000) {
+                score += 5;
             }
+
+            // Contact info
+            if (s.email) score += 25;
+            else if (s.twitter || s.youtube || s.instagram) score += 15;
+
+            // Variety (higher = more likely to try new releases)
+            const vs = s.varietyScore || 5;
+            score += Math.round((vs / 10) * 20);
+
+            return Math.min(100, score);
         }
-    });
 
-    // Reach by Genre
-    const genreReach = {};
-    filteredData.forEach(s => {
-        genreReach[s.primaryGenre] = (genreReach[s.primaryGenre] || 0) + s.avgViewers;
-    });
-    const sortedReach = Object.entries(genreReach).sort((a, b) => b[1] - a[1]).slice(0, 12);
-    if (reachChart) reachChart.destroy();
-    reachChart = new Chart(document.getElementById("reachChart"), {
-        type: "bar",
-        data: {
-            labels: sortedReach.map(g => g[0]),
-            datasets: [{
-                data: sortedReach.map(g => g[1]),
-                backgroundColor: "rgba(100,255,218,0.6)",
-                borderColor: "rgba(100,255,218,1)",
-                borderWidth: 1,
-                borderRadius: 4
-            }]
-        },
-        options: {
-            indexAxis: "y",
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { ticks: { color: "#8892b0", callback: v => v >= 1000 ? (v/1000) + "K" : v }, grid: { color: "rgba(35,53,84,0.5)" } },
-                y: { ticks: { color: "#e8e8e8", font: { size: 11 } }, grid: { display: false } }
-            }
+        function init() {
+            state.data = (typeof STREAMERS !== 'undefined' ? STREAMERS : []).map(s => ({
+                ...s,
+                platform: s.platform || 'Twitch',
+                secondaryGenres: s.secondaryGenres || [],
+                email: s.email || '',
+                twitter: s.twitter || '',
+                youtube: s.youtube || '',
+                instagram: s.instagram || '',
+                tiktok: s.tiktok || '',
+                outreachScore: 0
+            }));
+            // Initial scores (no genre selected)
+            state.data.forEach(s => { s.outreachScore = calcOutreachScore(s, ''); });
+            state.filtered = [...state.data];
+
+            populateFilters();
+            render();
+            buildCharts();
+            buildGenreGrid();
+
+            // Event listeners
+            document.getElementById('hero-genre').addEventListener('change', function() {
+                selectedGenre = this.value;
+                recalcScores();
+                applyFilters();
+                highlightGenreGrid();
+            });
+            document.getElementById('hero-search').addEventListener('input', debounce(applyFilters, 200));
+            ['filter-platform','filter-language','filter-viewers','filter-variety','filter-contact'].forEach(id => {
+                document.getElementById(id).addEventListener('change', applyFilters);
+            });
+
+            document.getElementById('data-date').textContent = 'Data as of ' + new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
         }
-    });
 
-    // Language Distribution
-    const langCounts = {};
-    filteredData.forEach(s => { langCounts[s.language] = (langCounts[s.language] || 0) + 1; });
-    const sortedLangs = Object.entries(langCounts).sort((a, b) => b[1] - a[1]);
-    const langColors = ["#107C10","#9146FF","#FF6B6B","#FFD93D","#64FFDA","#7B68EE","#FF8C00","#00CED1","#FF69B4","#98FB98"];
-    if (languageChart) languageChart.destroy();
-    languageChart = new Chart(document.getElementById("languageChart"), {
-        type: "doughnut",
-        data: {
-            labels: sortedLangs.map(l => l[0]),
-            datasets: [{
-                data: sortedLangs.map(l => l[1]),
-                backgroundColor: langColors.slice(0, sortedLangs.length),
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: "bottom", labels: { color: "#e8e8e8", padding: 12, font: { size: 11 } } }
-            }
+        function recalcScores() {
+            state.data.forEach(s => { s.outreachScore = calcOutreachScore(s, selectedGenre); });
         }
-    });
-}
 
-// ========================================
-// TABLE
-// ========================================
-function updateTable() {
-    const start = (currentPage - 1) * pageSize;
-    const end = start + pageSize;
-    const pageData = filteredData.slice(start, end);
-    const maxViewers = Math.max(...filteredData.map(s => s.avgViewers), 1);
+        function populateFilters() {
+            const genres = new Set();
+            const languages = new Set();
+            state.data.forEach(s => {
+                if (s.primaryGenre && s.primaryGenre !== 'Non-Gaming' && s.primaryGenre !== 'Casino') genres.add(s.primaryGenre);
+                (s.secondaryGenres || []).forEach(g => { if (g && g !== 'Non-Gaming' && g !== 'Casino') genres.add(g); });
+                if (s.language) languages.add(s.language);
+            });
 
-    const activeGenre = document.getElementById("genreFilter").value;
-    const tbody = document.getElementById("tableBody");
-    tbody.innerHTML = pageData.map(s => {
-        const platformClass = s.platform === "Twitch" ? "platform-twitch" : s.platform === "YouTube" ? "platform-youtube" : "platform-kick";
-        const barWidth = Math.max((s.avgViewers / maxViewers) * 80, 4);
-        const secondaryTags = s.secondaryGenres.map(g => `<span class="genre-tag secondary">${g}</span>`).join("");
-        const matchCell = activeGenre ? `<td>${s.primaryGenre === activeGenre ? '<span class="match-primary">PRIMARY</span>' : '<span class="match-secondary">Secondary</span>'}</td>` : '';
-        return `<tr>
-            <td class="streamer-name">${s.name}</td>
-            <td><span class="platform-badge ${platformClass}">${s.platform}</span></td>
-            <td><div class="viewer-bar"><span>${s.avgViewers.toLocaleString()}</span><div class="viewer-bar-fill" style="width:${barWidth}px"></div></div></td>
-            <td>${s.followers >= 1000000 ? (s.followers/1000000).toFixed(1)+"M" : (s.followers/1000).toFixed(0)+"K"}</td>
-            ${matchCell}
-            <td><span class="genre-tag">${s.primaryGenre}</span></td>
-            <td><div class="genre-tags">${secondaryTags || '<span style="color:#555">—</span>'}</div></td>
-            <td>${s.topGame}</td>
-            <td><span class="variety-badge"><span class="variety-dot" style="background:${varietyColor(s.varietyScore)}"></span><span class="variety-num" style="color:${varietyColor(s.varietyScore)}">${s.varietyScore}</span>${varietyLabel(s.varietyScore)}</span></td>
-            <td class="language-badge">${s.language}</td>
-        </tr>`;
-    }).join("");
+            const heroGenre = document.getElementById('hero-genre');
+            [...genres].sort().forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g; opt.textContent = g;
+                heroGenre.appendChild(opt);
+            });
 
-    const totalPages = Math.ceil(filteredData.length / pageSize);
-    document.getElementById("pageInfo").textContent = `Page ${currentPage} of ${totalPages}`;
-    document.getElementById("prevBtn").disabled = currentPage <= 1;
-    document.getElementById("nextBtn").disabled = currentPage >= totalPages;
-    document.getElementById("resultCount").textContent = `${filteredData.length} streamers found`;
-}
+            const langSelect = document.getElementById('filter-language');
+            [...languages].sort().forEach(l => {
+                const opt = document.createElement('option');
+                opt.value = l; opt.textContent = l;
+                langSelect.appendChild(opt);
+            });
+        }
 
-function changePage(delta) {
-    const totalPages = Math.ceil(filteredData.length / pageSize);
-    currentPage = Math.max(1, Math.min(currentPage + delta, totalPages));
-    updateTable();
-}
+        function applyFilters() {
+            const search = document.getElementById('hero-search').value.toLowerCase().trim();
+            const platform = document.getElementById('filter-platform').value;
+            const language = document.getElementById('filter-language').value;
+            const viewerFilter = document.getElementById('filter-viewers').value;
+            const variety = document.getElementById('filter-variety').value;
+            const contact = document.getElementById('filter-contact').value;
 
-// Start
-init();
-</script>
+            state.filtered = state.data.filter(s => {
+                // Genre filter: match if primary or secondary
+                if (selectedGenre) {
+                    const allGenres = [s.primaryGenre, ...(s.secondaryGenres || [])];
+                    if (!allGenres.includes(selectedGenre)) return false;
+                }
+
+                if (search && !(
+                    s.name.toLowerCase().includes(search) ||
+                    (s.topGame || '').toLowerCase().includes(search) ||
+                    (s.primaryGenre || '').toLowerCase().includes(search)
+                )) return false;
+
+                if (platform && s.platform !== platform) return false;
+                if (language && s.language !== language) return false;
+
+                // Viewer filter
+                if (viewerFilter === 'sweet') {
+                    if (s.avgViewers < SWEET_LO || s.avgViewers > SWEET_HI) return false;
+                } else if (viewerFilter !== '0' && viewerFilter) {
+                    if (s.avgViewers < parseInt(viewerFilter)) return false;
+                }
+
+                if (variety) {
+                    const v = s.varietyScore || 0;
+                    if (variety === 'Specialist' && v > 3) return false;
+                    if (variety === 'Moderate' && (v < 4 || v > 6)) return false;
+                    if (variety === 'Variety' && v < 7) return false;
+                }
+
+                if (contact === 'yes' && !s.email && !s.twitter && !s.youtube && !s.instagram) return false;
+                if (contact === 'email' && !s.email) return false;
+
+                // Exclude non-gaming / casino
+                if (s.primaryGenre === 'Non-Gaming' || s.primaryGenre === 'Casino') return false;
+
+                return true;
+            });
+
+            state.page = 1;
+            render();
+        }
+
+        window.clearAllFilters = function() {
+            document.getElementById('hero-genre').value = '';
+            document.getElementById('hero-search').value = '';
+            document.getElementById('filter-platform').value = '';
+            document.getElementById('filter-language').value = '';
+            document.getElementById('filter-viewers').value = '0';
+            document.getElementById('filter-variety').value = '';
+            document.getElementById('filter-contact').value = '';
+            selectedGenre = '';
+            recalcScores();
+            applyFilters();
+            highlightGenreGrid();
+        };
+
+        function selectGenre(genre) {
+            selectedGenre = genre;
+            document.getElementById('hero-genre').value = genre;
+            recalcScores();
+            applyFilters();
+            highlightGenreGrid();
+        }
+        window.selectGenre = selectGenre;
+
+        function highlightGenreGrid() {
+            document.querySelectorAll('.genre-item').forEach(el => {
+                el.classList.toggle('active', el.dataset.genre === selectedGenre);
+            });
+        }
+
+        function render() {
+            renderKPIs();
+            renderTable();
+        }
+
+        function renderKPIs() {
+            const d = state.filtered;
+            const total = d.length;
+            const sweetSpot = d.filter(s => s.avgViewers >= SWEET_LO && s.avgViewers <= SWEET_HI).length;
+            const withEmail = d.filter(s => s.email).length;
+            const withAnyContact = d.filter(s => s.email || s.twitter || s.youtube || s.instagram).length;
+            const avgScore = total ? Math.round(d.reduce((a, s) => a + s.outreachScore, 0) / total) : 0;
+            const highScore = d.filter(s => s.outreachScore >= 70).length;
+
+            const kpis = [
+                { label: 'Matching Streamers', value: total.toLocaleString(), sub: selectedGenre ? `in ${selectedGenre}` : 'all gaming genres' },
+                { label: 'Sweet Spot (500–5K)', value: sweetSpot.toLocaleString(), sub: `${total ? Math.round(sweetSpot/total*100) : 0}% of results`, highlight: true, amber: true },
+                { label: 'With Email', value: withEmail.toLocaleString(), sub: `${withAnyContact.toLocaleString()} with any contact` },
+                { label: 'Avg Outreach Score', value: avgScore, sub: 'out of 100', green: true },
+                { label: 'High-Score Candidates', value: highScore.toLocaleString(), sub: 'score 70+', green: true }
+            ];
+
+            document.getElementById('kpi-row').innerHTML = kpis.map(k =>
+                `<div class="kpi-card${k.highlight ? ' highlight' : ''}">
+                    <div class="kpi-label">${k.label}</div>
+                    <div class="kpi-value${k.green ? ' green' : ''}${k.amber ? ' amber' : ''}">${k.value}</div>
+                    <div class="kpi-sub">${k.sub}</div>
+                </div>`
+            ).join('');
+        }
+
+        /* ── Table ── */
+        const COLUMNS = [
+            { key: 'outreachScore', label: 'Score', w: '70px', align: 'center' },
+            { key: 'name', label: 'Streamer', w: '160px' },
+            { key: 'platform', label: 'Platform', w: '80px' },
+            { key: 'primaryGenre', label: 'Genres (Top 3)', w: '240px' },
+            { key: 'topGame', label: 'Top Game', w: '170px' },
+            { key: 'avgViewers', label: 'Avg Viewers', w: '100px', align: 'right' },
+            { key: 'followers', label: 'Followers', w: '100px', align: 'right' },
+            { key: 'varietyScore', label: 'Variety', w: '70px', align: 'center' },
+            { key: 'contact', label: 'Contact', w: '110px' }
+        ];
+
+        function renderTable() {
+            const sorted = [...state.filtered].sort((a, b) => {
+                let aVal = a[state.sortCol], bVal = b[state.sortCol];
+                if (state.sortCol === 'contact') {
+                    aVal = (a.email ? 2 : 0) + (a.twitter ? 1 : 0) + (a.youtube ? 1 : 0) + (a.instagram ? 1 : 0);
+                    bVal = (b.email ? 2 : 0) + (b.twitter ? 1 : 0) + (b.youtube ? 1 : 0) + (b.instagram ? 1 : 0);
+                }
+                if (typeof aVal === 'string') aVal = (aVal || '').toLowerCase();
+                if (typeof bVal === 'string') bVal = (bVal || '').toLowerCase();
+                if (aVal < bVal) return state.sortDir === 'asc' ? -1 : 1;
+                if (aVal > bVal) return state.sortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+            const start = (state.page - 1) * PAGE_SIZE;
+            const pageData = sorted.slice(start, start + PAGE_SIZE);
+
+            document.getElementById('table-head').innerHTML = COLUMNS.map(col =>
+                `<th class="${state.sortCol === col.key ? 'sorted' : ''}" style="width:${col.w};${col.align ? 'text-align:'+col.align : ''}" onclick="sortBy('${col.key}')">${col.label} <span class="sort-icon">${state.sortCol === col.key ? (state.sortDir === 'asc' ? '▲' : '▼') : '↕'}</span></th>`
+            ).join('');
+
+            document.getElementById('table-body').innerHTML = pageData.map(s => {
+                const isSweetSpot = s.avgViewers >= SWEET_LO && s.avgViewers <= SWEET_HI;
+                const platformClass = s.platform === 'Kick' ? 'platform-kick' : 'platform-twitch';
+                const scoreClass = s.outreachScore >= 70 ? 'score-high' : s.outreachScore >= 45 ? 'score-med' : 'score-low';
+                const varietyClass = (s.varietyScore || 0) <= 3 ? 'variety-specialist' : (s.varietyScore || 0) <= 6 ? 'variety-moderate' : 'variety-variety';
+                const url = s.twitchUrl || (s.platform === 'Kick' ? `https://kick.com/${s.name}` : `https://twitch.tv/${s.name}`);
+
+                // Top 3 genres
+                const allGenres = [s.primaryGenre, ...(s.secondaryGenres || [])].filter(Boolean).slice(0, 3);
+                const genreHtml = allGenres.map((g, i) =>
+                    i === 0 ? `<span class="genre-tag">${esc(g)}</span>` : `<span class="genre-secondary">${esc(g)}</span>`
+                ).join('');
+
+                return `<tr class="${isSweetSpot ? 'sweet-spot-row' : ''}">
+                    <td style="text-align:center"><span class="outreach-score ${scoreClass}">${s.outreachScore}</span></td>
+                    <td class="streamer-name">${isSweetSpot ? '<span class="sweet-spot-indicator"></span>' : ''}<a href="${url}" target="_blank" rel="noopener">${esc(s.name)}</a></td>
+                    <td><span class="platform-badge ${platformClass}">${s.platform}</span></td>
+                    <td>${genreHtml || '—'}</td>
+                    <td>${esc(s.topGame || '—')}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">${(s.avgViewers || 0).toLocaleString()}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">${formatCompact(s.followers || 0)}</td>
+                    <td style="text-align:center"><span class="variety-badge ${varietyClass}">${s.varietyScore || '—'}</span></td>
+                    <td>${renderContacts(s)}</td>
+                </tr>`;
+            }).join('');
+
+            document.getElementById('table-count').textContent = `${sorted.length.toLocaleString()} streamer${sorted.length !== 1 ? 's' : ''}`;
+            document.getElementById('page-info').textContent = sorted.length ?
+                `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, sorted.length)} of ${sorted.length.toLocaleString()}` : 'No results';
+            renderPagination(totalPages);
+        }
+
+        function renderContacts(s) {
+            const links = [];
+            if (s.email) links.push(`<a href="mailto:${esc(s.email)}" class="contact-link has-data" title="${esc(s.email)}">@</a>`);
+            if (s.twitter) links.push(`<a href="https://x.com/${esc(s.twitter)}" target="_blank" class="contact-link has-data" title="@${esc(s.twitter)}">𝕏</a>`);
+            if (s.youtube) links.push(`<a href="https://youtube.com/@${esc(s.youtube)}" target="_blank" class="contact-link has-data" title="${esc(s.youtube)}">YT</a>`);
+            if (s.instagram) links.push(`<a href="https://instagram.com/${esc(s.instagram)}" target="_blank" class="contact-link has-data" title="@${esc(s.instagram)}">IG</a>`);
+            if (s.tiktok) links.push(`<a href="https://tiktok.com/@${esc(s.tiktok)}" target="_blank" class="contact-link has-data" title="@${esc(s.tiktok)}">TT</a>`);
+            return links.length ? `<div class="contact-links">${links.join('')}</div>` : '<span style="color:var(--text-muted)">—</span>';
+        }
+
+        function renderPagination(totalPages) {
+            const c = document.getElementById('pagination');
+            if (totalPages <= 1) { c.innerHTML = ''; return; }
+            let pages = [1];
+            const s = Math.max(2, state.page - 2), e = Math.min(totalPages - 1, state.page + 2);
+            if (s > 2) pages.push('...');
+            for (let i = s; i <= e; i++) pages.push(i);
+            if (e < totalPages - 1) pages.push('...');
+            if (totalPages > 1) pages.push(totalPages);
+            c.innerHTML =
+                `<button class="page-btn" onclick="goPage(${state.page-1})" ${state.page===1?'disabled':''}>&laquo;</button>` +
+                pages.map(p => p === '...' ? '<span style="padding:5px 3px;color:var(--text-muted)">…</span>' :
+                `<button class="page-btn${p===state.page?' active':''}" onclick="goPage(${p})">${p}</button>`).join('') +
+                `<button class="page-btn" onclick="goPage(${state.page+1})" ${state.page===totalPages?'disabled':''}>&raquo;</button>`;
+        }
+
+        window.goPage = function(p) {
+            const tp = Math.ceil(state.filtered.length / PAGE_SIZE);
+            if (p < 1 || p > tp) return;
+            state.page = p;
+            renderTable();
+            document.getElementById('table-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+
+        window.sortBy = function(col) {
+            if (state.sortCol === col) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+            else { state.sortCol = col; state.sortDir = ['avgViewers','followers','varietyScore','contact','outreachScore'].includes(col) ? 'desc' : 'asc'; }
+            state.page = 1;
+            renderTable();
+        };
+
+        /* ── Charts ── */
+        function buildCharts() {
+            // Genre distribution
+            const gc = {};
+            state.data.forEach(s => {
+                const g = s.primaryGenre;
+                if (g && g !== 'Non-Gaming' && g !== 'Casino') gc[g] = (gc[g] || 0) + 1;
+            });
+            const gs = Object.entries(gc).sort((a,b) => b[1]-a[1]).slice(0, 20);
+            const ctx1 = document.getElementById('chart-genre-dist').getContext('2d');
+            state.charts.genre = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: gs.map(e => e[0]),
+                    datasets: [{
+                        data: gs.map(e => e[1]),
+                        backgroundColor: gs.map((_,i) => `rgba(16,124,16,${0.9 - i*0.03})`),
+                        borderColor: 'rgba(27,158,27,0.5)', borderWidth: 1,
+                        borderRadius: 4, barPercentage: 0.7
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1a1a24', borderColor: '#28283a', borderWidth: 1,
+                            titleColor: '#f0f0f5', bodyColor: '#9d9db5', padding: 10, cornerRadius: 8,
+                            titleFont: { family: 'Inter', weight: '600', size: 12 },
+                            bodyFont: { family: 'Inter', size: 11 },
+                            callbacks: { label: c => `${c.parsed.x.toLocaleString()} streamers` }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(40,40,58,0.4)', drawBorder: false }, ticks: { color: '#6a6a80', font: { family: 'Inter', size: 10 } } },
+                        y: { grid: { display: false }, ticks: { color: '#9d9db5', font: { family: 'Inter', size: 11, weight: '500' } } }
+                    },
+                    onClick: (_, el) => { if (el.length) selectGenre(gs[el[0].index][0]); }
+                }
+            });
+            document.getElementById('chart-genre-dist').parentElement.style.height = (gs.length * 26 + 30) + 'px';
+
+            // Top games
+            const gv = {};
+            state.data.forEach(s => { if (s.topGame) gv[s.topGame] = (gv[s.topGame] || 0) + (s.avgViewers || 0); });
+            const gvs = Object.entries(gv).sort((a,b) => b[1]-a[1]).slice(0, 15);
+            const ctx2 = document.getElementById('chart-top-games').getContext('2d');
+            const barColors = ['rgba(59,130,246,0.7)','rgba(139,92,246,0.7)','rgba(6,182,212,0.7)','rgba(245,158,11,0.7)','rgba(16,124,16,0.7)'];
+            state.charts.games = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: gvs.map(e => trunc(e[0], 26)),
+                    datasets: [{ data: gvs.map(e => e[1]), backgroundColor: gvs.map((_,i) => barColors[i%barColors.length]), borderRadius: 4, barPercentage: 0.7 }]
+                },
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1a1a24', borderColor: '#28283a', borderWidth: 1,
+                            titleColor: '#f0f0f5', bodyColor: '#9d9db5', padding: 10, cornerRadius: 8,
+                            titleFont: { family: 'Inter', weight: '600', size: 12 },
+                            bodyFont: { family: 'Inter', size: 11 },
+                            callbacks: {
+                                title: c => { const f = Object.entries(gv).sort((a,b)=>b[1]-a[1])[c[0].dataIndex]; return f ? f[0] : ''; },
+                                label: c => `${c.parsed.x.toLocaleString()} combined avg viewers`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(40,40,58,0.4)', drawBorder: false }, ticks: { color: '#6a6a80', font: { family: 'Inter', size: 10 }, callback: v => formatCompact(v) } },
+                        y: { grid: { display: false }, ticks: { color: '#9d9db5', font: { family: 'Inter', size: 10, weight: '500' } } }
+                    }
+                }
+            });
+            document.getElementById('chart-top-games').parentElement.style.height = (gvs.length * 26 + 30) + 'px';
+        }
+
+        /* ── Genre Grid ── */
+        function buildGenreGrid() {
+            const gd = {};
+            state.data.forEach(s => {
+                const g = s.primaryGenre;
+                if (!g || g === 'Non-Gaming' || g === 'Casino') return;
+                if (!gd[g]) gd[g] = { count: 0, sweet: 0, withContact: 0, viewers: 0, games: {} };
+                gd[g].count++;
+                gd[g].viewers += (s.avgViewers || 0);
+                if (s.avgViewers >= SWEET_LO && s.avgViewers <= SWEET_HI) gd[g].sweet++;
+                if (s.email || s.twitter || s.youtube) gd[g].withContact++;
+                if (s.topGame) gd[g].games[s.topGame] = (gd[g].games[s.topGame] || 0) + (s.avgViewers || 0);
+            });
+
+            const maxCount = Math.max(...Object.values(gd).map(g => g.count));
+            const sorted = Object.entries(gd).sort((a,b) => b[1].count - a[1].count);
+
+            document.getElementById('genre-grid').innerHTML = sorted.map(([genre, d]) => {
+                const topGames = Object.entries(d.games).sort((a,b) => b[1]-a[1]).slice(0, 3);
+                const pct = (d.count / maxCount * 100).toFixed(0);
+                return `<div class="genre-item" data-genre="${genre}" onclick="selectGenre('${genre.replace(/'/g, "\\'")}')">
+                    <div class="genre-item-head">
+                        <span class="genre-name">${genre}</span>
+                        <span class="genre-badge">${d.count}</span>
+                    </div>
+                    <div class="genre-bar-track"><div class="genre-bar-fill" style="width:${pct}%"></div></div>
+                    <div class="genre-meta"><strong>Top:</strong> ${topGames.map(g => g[0]).join(' · ') || '—'}</div>
+                    <div class="genre-sweet-spot">${d.sweet} in sweet spot · ${d.withContact} with contact</div>
+                </div>`;
+            }).join('');
+        }
+
+        /* ── CSV Export ── */
+        window.exportCSV = function() {
+            const h = ['Outreach Score','Name','Platform','Primary Genre','Genre 2','Genre 3','Top Game','Avg Viewers','Followers','Language','Variety Score','Email','Twitter','YouTube','Instagram','TikTok','URL'];
+            const rows = state.filtered
+                .sort((a,b) => b.outreachScore - a.outreachScore)
+                .map(s => {
+                    const genres = [s.primaryGenre, ...(s.secondaryGenres || [])].filter(Boolean);
+                    return [
+                        s.outreachScore, s.name, s.platform, genres[0] || '', genres[1] || '', genres[2] || '',
+                        s.topGame, s.avgViewers, s.followers, s.language, s.varietyScore,
+                        s.email, s.twitter, s.youtube, s.instagram, s.tiktok || '',
+                        s.twitchUrl || (s.platform === 'Kick' ? `https://kick.com/${s.name}` : `https://twitch.tv/${s.name}`)
+                    ];
+                });
+            const csv = [h, ...rows].map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `xbox-outreach-${selectedGenre ? selectedGenre.toLowerCase().replace(/\s+/g,'-') + '-' : ''}${new Date().toISOString().slice(0,10)}.csv`;
+            a.click(); URL.revokeObjectURL(url);
+        };
+
+        /* ── Helpers ── */
+        function formatCompact(n) {
+            if (n >= 1e9) return (n/1e9).toFixed(1)+'B';
+            if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+            if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+            return n.toString();
+        }
+        function trunc(s, l) { return s.length > l ? s.slice(0, l-1) + '…' : s; }
+        function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+        function debounce(fn, ms) { let t; return function(...a) { clearTimeout(t); t = setTimeout(() => fn.apply(this,a), ms); }; }
+
+        document.addEventListener('DOMContentLoaded', init);
+    })();
+    </script>
 </body>
 </html>
