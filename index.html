@@ -268,6 +268,7 @@
         }
         .platform-twitch { background: rgba(145,70,255,0.15); color: #b48eff; }
         .platform-kick { background: rgba(83,252,24,0.12); color: #53fc18; }
+        .platform-youtube { background: rgba(255,0,0,0.12); color: #ff4444; }
         .genre-tag {
             display: inline-block; padding: 1px 7px;
             background: rgba(16,124,16,0.12); color: var(--xbox-green-light);
@@ -428,6 +429,7 @@
                     <option value="">All</option>
                     <option value="Twitch">Twitch</option>
                     <option value="Kick">Kick</option>
+                    <option value="YouTube">YouTube</option>
                 </select>
             </div>
             <div class="filter-group">
@@ -790,10 +792,10 @@
 
             document.getElementById('table-body').innerHTML = pageData.map(s => {
                 const isSweetSpot = s.avgViewers >= SWEET_LO && s.avgViewers <= SWEET_HI;
-                const platformClass = s.platform === 'Kick' ? 'platform-kick' : 'platform-twitch';
+                const platformClass = s.platform === 'YouTube' ? 'platform-youtube' : s.platform === 'Kick' ? 'platform-kick' : 'platform-twitch';
                 const scoreClass = s.outreachScore >= 70 ? 'score-high' : s.outreachScore >= 45 ? 'score-med' : 'score-low';
                 const varietyClass = (s.varietyScore || 0) <= 3 ? 'variety-specialist' : (s.varietyScore || 0) <= 6 ? 'variety-moderate' : 'variety-variety';
-                const url = s.twitchUrl || (s.platform === 'Kick' ? `https://kick.com/${s.name}` : `https://twitch.tv/${s.name}`);
+                const url = s.twitchUrl || (s.platform === 'Kick' ? `https://kick.com/${s.name}` : s.platform === 'YouTube' ? `https://youtube.com/@${s.youtube || s.name}` : `https://twitch.tv/${s.name}`);
 
                 // Top 3 genres
                 const allGenres = [s.primaryGenre, ...(s.secondaryGenres || [])].filter(Boolean).slice(0, 3);
@@ -992,7 +994,7 @@
                         s.outreachScore, s.name, s.platform, genres[0] || '', genres[1] || '', genres[2] || '',
                         s.topGame, s.avgViewers, s.followers, s.language, s.varietyScore,
                         s.email, s.twitter, s.youtube, s.instagram, s.tiktok || '',
-                        s.twitchUrl || (s.platform === 'Kick' ? `https://kick.com/${s.name}` : `https://twitch.tv/${s.name}`)
+                        s.twitchUrl || (s.platform === 'Kick' ? `https://kick.com/${s.name}` : s.platform === 'YouTube' ? `https://youtube.com/@${s.youtube || s.name}` : `https://twitch.tv/${s.name}`)
                     ];
                 });
             const csv = [h, ...rows].map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
