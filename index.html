@@ -418,7 +418,7 @@
             <div class="legend-item"><div class="legend-dot sweet"></div> Sweet Spot (500–5K viewers)</div>
             <div class="legend-item"><div class="legend-dot score-h"></div> High outreach score</div>
             <div class="legend-item"><div class="legend-dot score-m"></div> Medium outreach score</div>
-            <span style="margin-left:auto; font-size:10px;">Outreach Score = genre match + viewer sweet spot + contact info + variety</span>
+            <span style="margin-left:auto; font-size:10px;">Outreach Score = genre fit + real variety + audience + language + reachability · junk auto-filtered</span>
         </div>
 
         <!-- Advanced Filters -->
@@ -527,7 +527,31 @@
 
         const PAGE_SIZE = 50;
         const SWEET_LO = 500, SWEET_HI = 5000;
+        const INACTIVE_DAYS = 90;            // v2: gate streamers idle longer than this (needs lastActiveDays)
         let selectedGenre = '';
+
+        /* ── v2: content gate data ──
+           Patterns that indicate a channel is NOT a gameplay streamer, or is
+           giveaway/scam spam. Matched against the name + recent video titles. */
+        const EXCLUDE_PATTERNS = [
+            // ASMR / oddly-satisfying / unboxing
+            'asmr','satisfying','unboxing','soap',' candy','lollipop','chupa chups','sweets',
+            // giveaway / bot spam
+            'treasure island','free villager','villagers free','free items','24/7',
+            // music / ambient / sleep
+            'bgm','piano',' jazz','lofi','sleep music','study & work','睡眠','作業','cafe jazz',
+            // non-gaming media
+            'full movie','full episode','lesbian series','romance (full','walkthrough compilation',
+            // live cams / travel
+            'airport','maho beach','caribbean destinations','sxm airport','live cam',
+            // religious
+            'jesus','prophec','ministry','salvation','earthquakes roaring'
+        ];
+        // Stream categories that are not game content.
+        const NON_GAMING_CATEGORIES = new Set([
+            'Just Chatting','IRL','Casino','Slots','Pools, Hot Tubs & Beaches',
+            'Music','ASMR','Talk Shows & Podcasts','Travel & Outdoors','Non-Gaming'
+        ]);
 
         let state = {
             data: [],
@@ -538,46 +562,73 @@
             charts: {}
         };
 
-        /* ── Outreach Score ──
-           0-100 composite:
-           - Genre match (selected genre is in their top 3): 30pts
-           - Sweet spot viewers (500-5K): 25pts, partial for close
-           - Has contact info: 25pts (email=25, social only=15)
-           - Variety score (higher = more likely to try new games): 20pts
+        /* ── v2: hard gate ──
+           Returns true if a streamer should be removed from results entirely:
+           non-gaming/spam content, a non-gaming stream category, or inactivity.
+           Degrades gracefully — checks for fields that don't exist yet stay off. */
+        function isExcludedContent(s) {
+            const titles = (s.recentTitles || s.latestTitles || '').toString().toLowerCase();
+            const blob = ((s.name || '') + ' ' + titles).toLowerCase();
+            if (EXCLUDE_PATTERNS.some(p => blob.includes(p))) return true;
+            if (s.streamCategory && NON_GAMING_CATEGORIES.has(s.streamCategory)) return true;
+            if (s.primaryGenre === 'Non-Gaming' || s.primaryGenre === 'Casino') return true;
+            if (typeof s.lastActiveDays === 'number' && s.lastActiveDays > INACTIVE_DAYS) return true;
+            return false;
+        }
+
+        /* ── v2: real variety ──
+           Distinct games played recently. null when we don't have the data yet
+           (so it stays neutral). Single-game lock = 1. */
+        function distinctRecentGames(s) {
+            const list = s.recentGames || s.recentGamesList;
+            if (!Array.isArray(list) || list.length === 0) return null;
+            return new Set(list.map(g => String(g).toLowerCase().trim())).size;
+        }
+
+        /* ── Outreach Score v2 ── 0-100 composite, applied only after the gate:
+           - Genre fit (primary match 25 / secondary 18)
+           - Real variety from recent games (3+ -> 25, 2 -> 17, single-game -> 2, unknown -> 12)
+           - Audience sweet spot (500-5K -> 20)
+           - Language fit (English -> 15, other -> 4)
+           - Reachability (email -> 15, social -> 8)
         */
         function calcOutreachScore(s, genre) {
+            if (isExcludedContent(s)) return 0;   // gated -> never ranks
+
             let score = 0;
             const genres = [s.primaryGenre, ...(s.secondaryGenres || [])].filter(Boolean);
 
-            // Genre match
+            // Genre fit (0-25)
             if (genre) {
-                if (s.primaryGenre === genre) score += 30;
-                else if (genres.includes(genre)) score += 20;
+                if (s.primaryGenre === genre) score += 25;
+                else if (genres.includes(genre)) score += 18;
             } else {
-                score += 15; // no genre selected, neutral
+                score += 12; // no genre selected -> neutral
             }
 
-            // Sweet spot viewers
-            const v = s.avgViewers || 0;
-            if (v >= SWEET_LO && v <= SWEET_HI) {
-                score += 25;
-            } else if (v > SWEET_HI && v <= 10000) {
-                score += 15;
-            } else if (v >= 200 && v < SWEET_LO) {
-                score += 10;
-            } else if (v > 10000) {
-                score += 5;
-            }
+            // Real variety (0-25)
+            const d = distinctRecentGames(s);
+            if (d === null) score += 12;
+            else if (d >= 3) score += 25;
+            else if (d === 2) score += 17;
+            else score += 2;             // single-game lock
 
-            // Contact info
-            if (s.email) score += 25;
-            else if (s.twitter || s.youtube || s.instagram) score += 15;
+            // Audience sweet spot (0-20)
+            const v = s.avgViewers || 0, f = s.followers || 0;
+            if (v >= SWEET_LO && v <= SWEET_HI) score += 20;
+            else if (v > SWEET_HI) score += 12;
+            else if (v >= 200) score += 10;
+            else score += 3;
+            if (f && f < 5000 && v < 200) score -= 5;   // thin everything -> likely fake/tiny
 
-            // Variety (higher = more likely to try new releases)
-            const vs = s.varietyScore || 5;
-            score += Math.round((vs / 10) * 20);
+            // Language fit (0-15) — English preferred, others still allowed
+            score += (s.language === 'English') ? 15 : 4;
 
-            return Math.min(100, score);
+            // Reachability (0-15)
+            if (s.email) score += 15;
+            else if (s.twitter || s.youtube || s.instagram || s.tiktok) score += 8;
+
+            return Math.max(0, Math.min(100, score));
         }
 
         function init() {
@@ -653,6 +704,9 @@
             const contact = document.getElementById('filter-contact').value;
 
             state.filtered = state.data.filter(s => {
+                // v2 gate: hide non-gaming / spam / inactive channels everywhere
+                if (isExcludedContent(s)) return false;
+
                 // Genre filter: match if primary or secondary
                 if (selectedGenre) {
                     const allGenres = [s.primaryGenre, ...(s.secondaryGenres || [])];
@@ -684,9 +738,6 @@
 
                 if (contact === 'yes' && !s.email && !s.twitter && !s.youtube && !s.instagram) return false;
                 if (contact === 'email' && !s.email) return false;
-
-                // Exclude non-gaming / casino
-                if (s.primaryGenre === 'Non-Gaming' || s.primaryGenre === 'Casino') return false;
 
                 return true;
             });
