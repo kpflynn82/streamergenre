@@ -562,17 +562,44 @@
             charts: {}
         };
 
+        /* ── v2 field readers (with fallbacks) ──
+           These read the standard v2 fields if present, OR the field names the
+           nightly RSS pipeline already writes into data.js
+           (rss_distinct_games / rss_recent_titles with publish dates). */
+        function recentTitlesText(s) {
+            if (s.recentTitles) return String(s.recentTitles);
+            if (Array.isArray(s.rss_recent_titles)) return s.rss_recent_titles.map(t => (t && t.title) || '').join(' | ');
+            if (s.latestTitles) return String(s.latestTitles);
+            return '';
+        }
+        function recentGamesList(s) {
+            if (Array.isArray(s.recentGames)) return s.recentGames;
+            if (Array.isArray(s.rss_distinct_games)) return s.rss_distinct_games;   // pipeline field
+            if (Array.isArray(s.recentGamesList)) return s.recentGamesList;
+            return null;
+        }
+        function activeDays(s) {
+            if (typeof s.lastActiveDays === 'number') return s.lastActiveDays;
+            // derive from the newest publish date the pipeline stored
+            let dates = [];
+            if (Array.isArray(s.rss_recent_titles)) dates = s.rss_recent_titles.map(t => t && t.published).filter(Boolean);
+            else if (Array.isArray(s.rss_recent_games)) dates = s.rss_recent_games.map(t => t && t.published).filter(Boolean);
+            if (!dates.length) return null;
+            const t = Date.parse(dates.slice().sort()[dates.length - 1]);
+            return isNaN(t) ? null : Math.max(0, Math.floor((Date.now() - t) / 86400000));
+        }
+
         /* ── v2: hard gate ──
            Returns true if a streamer should be removed from results entirely:
            non-gaming/spam content, a non-gaming stream category, or inactivity.
            Degrades gracefully — checks for fields that don't exist yet stay off. */
         function isExcludedContent(s) {
-            const titles = (s.recentTitles || s.latestTitles || '').toString().toLowerCase();
-            const blob = ((s.name || '') + ' ' + titles).toLowerCase();
+            const blob = ((s.name || '') + ' ' + recentTitlesText(s)).toLowerCase();
             if (EXCLUDE_PATTERNS.some(p => blob.includes(p))) return true;
             if (s.streamCategory && NON_GAMING_CATEGORIES.has(s.streamCategory)) return true;
             if (s.primaryGenre === 'Non-Gaming' || s.primaryGenre === 'Casino') return true;
-            if (typeof s.lastActiveDays === 'number' && s.lastActiveDays > INACTIVE_DAYS) return true;
+            const ad = activeDays(s);
+            if (ad !== null && ad > INACTIVE_DAYS) return true;
             return false;
         }
 
@@ -580,7 +607,7 @@
            Distinct games played recently. null when we don't have the data yet
            (so it stays neutral). Single-game lock = 1. */
         function distinctRecentGames(s) {
-            const list = s.recentGames || s.recentGamesList;
+            const list = recentGamesList(s);
             if (!Array.isArray(list) || list.length === 0) return null;
             return new Set(list.map(g => String(g).toLowerCase().trim())).size;
         }
